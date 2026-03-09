@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 
-import { generateAllCards, type SeedCard } from '@/lib/cards/generate-seed';
+import type { SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
 import { CardPreview } from '@/components/admin/card-preview';
 import {
   RARITY_COLORS,
@@ -26,7 +27,7 @@ type RarityFilter = 'all' | 'common' | 'rare' | 'epic' | 'legendary';
 type MaterialFilter = 'all' | 'flat' | '3d' | 'chrome' | 'gold';
 
 export default function CardsPage() {
-  const [cards, setCards] = useState<SeedCard[]>([]);
+  const { cards, source } = useCards();
   const [selectedCard, setSelectedCard] = useState<SeedCard | null>(null);
   const [rarityFilter, setRarityFilter] = useState<RarityFilter>('all');
   const [materialFilter, setMaterialFilter] = useState<MaterialFilter>('all');
@@ -34,11 +35,6 @@ export default function CardsPage() {
   const [bgFilter, setBgFilter] = useState<string>('all');
   const [cardSize, setCardSize] = useState<'sm' | 'md' | 'lg'>('md');
   const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const allCards = generateAllCards();
-    setCards(allCards);
-  }, []);
 
   const filteredCards = useMemo(() => {
     return cards.filter((c) => {
@@ -147,6 +143,13 @@ export default function CardsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+            source === 'api'
+              ? 'bg-green-900/30 border-green-700 text-green-400'
+              : 'bg-yellow-900/30 border-yellow-700 text-yellow-400'
+          }`}>
+            {source === 'api' ? 'DB' : 'Local'}
+          </span>
           <Button
             variant="outline"
             size="sm"

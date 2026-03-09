@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { generateAllCards, type SeedCard } from '@/lib/cards/generate-seed';
+import type { SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
 import { CardPreview } from '@/components/admin/card-preview';
 import { RARITY_LABELS } from '@/lib/constants';
 import { XpWindow, XpProgress } from '@/components/xp';
@@ -11,12 +12,8 @@ import { XpWindow, XpProgress } from '@/components/xp';
 export default function CollectionPage() {
   const { connected } = useWallet();
   const { setVisible } = useWalletModal();
-  const [allCards, setAllCards] = useState<SeedCard[]>([]);
+  const { cards: allCards } = useCards();
   const [filter, setFilter] = useState<string>('all');
-
-  useEffect(() => {
-    setAllCards(generateAllCards());
-  }, []);
 
   const filteredCards = useMemo(() => {
     if (filter === 'all') return allCards;

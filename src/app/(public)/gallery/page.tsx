@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { generateAllCards, type SeedCard } from '@/lib/cards/generate-seed';
+import { useMemo, useState } from 'react';
+import type { SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
 import { CardPreview } from '@/components/admin/card-preview';
 import {
   SHAPES,
@@ -15,16 +16,12 @@ import { XpWindow, XpGroupBox } from '@/components/xp';
 type SortBy = 'number' | 'rarity' | 'atk' | 'def' | 'hp';
 
 export default function GalleryPage() {
-  const [allCards, setAllCards] = useState<SeedCard[]>([]);
+  const { cards: allCards } = useCards();
   const [rarityFilter, setRarityFilter] = useState<string>('all');
   const [shapeFilter, setShapeFilter] = useState<string>('all');
   const [materialFilter, setMaterialFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<SortBy>('number');
   const [selectedCard, setSelectedCard] = useState<SeedCard | null>(null);
-
-  useEffect(() => {
-    setAllCards(generateAllCards());
-  }, []);
 
   const filteredCards = useMemo(() => {
     let cards = allCards;

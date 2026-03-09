@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { generateAllCards, type SeedCard } from '@/lib/cards/generate-seed';
+import type { SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
 import { CardPreview } from '@/components/admin/card-preview';
 import {
   RARITY_LABELS,
@@ -62,24 +63,22 @@ function simulatePack(allCards: SeedCard[]): SeedCard[] {
 }
 
 export default function PromoPage() {
-  const [cards, setCards] = useState<SeedCard[]>([]);
+  const { cards } = useCards();
   const [pack, setPack] = useState<SeedCard[]>([]);
   const [showcaseCards, setShowcaseCards] = useState<SeedCard[]>([]);
 
   useEffect(() => {
-    const allCards = generateAllCards();
-    setCards(allCards);
-
+    if (cards.length === 0) return;
     // Pick 4 showcase cards — one of each rarity
     const showcase: SeedCard[] = [];
     for (const rarity of ['legendary', 'epic', 'rare', 'common'] as const) {
-      const pool = allCards.filter((c) => c.rarity_tier === rarity);
+      const pool = cards.filter((c) => c.rarity_tier === rarity);
       if (pool.length > 0) {
         showcase.push(pool[Math.floor(Math.random() * pool.length)]);
       }
     }
     setShowcaseCards(showcase);
-  }, []);
+  }, [cards]);
 
   const openPack = () => {
     if (cards.length > 0) {

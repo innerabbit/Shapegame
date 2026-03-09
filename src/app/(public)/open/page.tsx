@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { generateBoosterPack } from '@/lib/cards/generate-pack';
 import type { BoosterStage, PackCard } from '@/components/three/booster-scene';
 import type { RarityTier } from '@/types/cards';
@@ -16,17 +17,14 @@ const RARITY_HEX: Record<RarityTier, string> = {
   legendary: '#eab308',
 };
 
-// ── Card reveal popup (XP-styled) ──────────────────────────────
+// ── Card reveal popup ───────────────────────────────────────────
 
 function CardRevealInfo({ card }: { card: PackCard | null }) {
   if (!card) return null;
 
   return (
-    <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div
-        className="xp-window p-0"
-        style={{ minWidth: 280 }}
-      >
+    <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-[60] animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="xp-window p-0" style={{ minWidth: 260 }}>
         <div className="xp-title-bar" style={{ background: RARITY_HEX[card.rarity_tier] }}>
           <div className="flex items-center gap-[6px]">
             <span className="text-sm">{MANA_COLORS[card.mana_color].emoji}</span>
@@ -84,7 +82,7 @@ function StageHint({ stage, revealedCount, total }: {
   if (!hints[stage]) return null;
 
   return (
-    <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20">
+    <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[60]">
       <div className="xp-window p-0">
         <div className="px-4 py-1.5 text-[11px] text-[#222]">
           {hints[stage]}
@@ -96,22 +94,26 @@ function StageHint({ stage, revealedCount, total }: {
 
 // ── Summary after all revealed ─────────────────────────────────
 
-function PackSummary({ cards, onNewPack }: { cards: PackCard[]; onNewPack: () => void }) {
+function PackSummary({ cards, onNewPack, onClose }: {
+  cards: PackCard[];
+  onNewPack: () => void;
+  onClose: () => void;
+}) {
   const bestCard = cards.reduce((best, c) => {
     const order: RarityTier[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     return order.indexOf(c.rarity_tier) > order.indexOf(best.rarity_tier) ? c : best;
   }, cards[0]);
 
   return (
-    <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/30 animate-in fade-in duration-700">
-      <div className="xp-window" style={{ maxWidth: 400, width: '90%' }}>
+    <div className="absolute inset-0 z-[70] flex items-center justify-center bg-black/20 animate-in fade-in duration-700">
+      <div className="xp-window" style={{ maxWidth: 380, width: '90%' }}>
         <div className="xp-title-bar">
           <div className="flex items-center gap-[6px]">
             <span className="text-sm">🎴</span>
             <span className="xp-title-text">Pack Opened!</span>
           </div>
           <div className="flex items-center gap-[2px]">
-            <button className="xp-btn-close" aria-label="Close" onClick={onNewPack}>
+            <button className="xp-btn-close" aria-label="Close" onClick={onClose}>
               <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
             </button>
           </div>
@@ -119,7 +121,6 @@ function PackSummary({ cards, onNewPack }: { cards: PackCard[]; onNewPack: () =>
         <div className="xp-body p-4">
           <p className="text-[11px] text-[#666] text-center mb-3">{cards.length} cards revealed</p>
 
-          {/* Best pull */}
           <div
             className="border p-3 mb-3 text-center"
             style={{ borderColor: RARITY_HEX[bestCard.rarity_tier] }}
@@ -132,7 +133,6 @@ function PackSummary({ cards, onNewPack }: { cards: PackCard[]; onNewPack: () =>
             </div>
           </div>
 
-          {/* Card list */}
           <div className="space-y-1 mb-4">
             {cards.map((c, i) => (
               <div key={i} className="flex items-center justify-between px-2 py-1" style={{ background: i % 2 === 0 ? '#f0f0f0' : 'transparent' }}>
@@ -148,47 +148,40 @@ function PackSummary({ cards, onNewPack }: { cards: PackCard[]; onNewPack: () =>
             ))}
           </div>
 
-          <button
-            onClick={onNewPack}
-            className="xp-button w-full text-center"
-          >
-            Open Another Pack
-          </button>
+          <div className="flex gap-2">
+            <button onClick={onNewPack} className="xp-button flex-1 text-center">
+              Open Another
+            </button>
+            <button onClick={onClose} className="xp-button flex-1 text-center">
+              Done
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
 
-// ── Main Page ──────────────────────────────────────────────────
+// ── Main Page — transparent overlay on top of XP interface ──────
 
 export default function OpenBoosterPage() {
-  const [mounted, setMounted] = useState(false);
+  const router = useRouter();
   const [SceneComponent, setSceneComponent] = useState<React.ComponentType<any> | null>(null);
   const [packCards, setPackCards] = useState<PackCard[]>(() => generateBoosterPack());
   const [stage, setStage] = useState<BoosterStage>('idle');
   const [revealedCount, setRevealedCount] = useState(0);
   const [lastRevealed, setLastRevealed] = useState<PackCard | null>(null);
   const [showSummary, setShowSummary] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
     import('@/components/three/booster-scene')
-      .then(mod => {
-        setSceneComponent(() => mod.BoosterScene);
-      })
-      .catch(err => {
-        console.error('Failed to load 3D scene:', err);
-        setLoadError(err.message || 'Failed to load 3D scene');
-      });
+      .then(mod => setSceneComponent(() => mod.BoosterScene))
+      .catch(err => console.error('Failed to load 3D scene:', err));
   }, []);
 
   const handleStageChange = useCallback((newStage: BoosterStage) => {
     setStage(newStage);
-    if (newStage === 'showcase') {
-      setLastRevealed(null);
-    }
+    if (newStage === 'showcase') setLastRevealed(null);
   }, []);
 
   const handleCardReveal = useCallback((card: PackCard, index: number) => {
@@ -196,9 +189,7 @@ export default function OpenBoosterPage() {
     setRevealedCount(index + 1);
   }, []);
 
-  const handleComplete = useCallback(() => {
-    setShowSummary(true);
-  }, []);
+  const handleComplete = useCallback(() => setShowSummary(true), []);
 
   const handleNewPack = useCallback(() => {
     setPackCards(generateBoosterPack());
@@ -208,59 +199,48 @@ export default function OpenBoosterPage() {
     setShowSummary(false);
   }, []);
 
-  return (
-    <div className="xp-window" style={{ height: 'calc(100vh - 160px)', minHeight: 500 }}>
-      <div className="xp-title-bar">
-        <div className="flex items-center gap-[6px]">
-          <span className="text-sm">📦</span>
-          <span className="xp-title-text">Booster Pack Opening</span>
-        </div>
-        <div className="flex items-center gap-[2px]">
-          <button className="xp-btn-minimize" aria-label="Minimize">
-            <svg width="8" height="2" viewBox="0 0 8 2"><rect width="8" height="2" fill="currentColor"/></svg>
-          </button>
-          <button className="xp-btn-maximize" aria-label="Maximize">
-            <svg width="9" height="9" viewBox="0 0 9 9"><rect x="0" y="0" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
-          </button>
-          <button className="xp-btn-close" aria-label="Close">
-            <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
-          </button>
-        </div>
-      </div>
+  const handleClose = useCallback(() => router.back(), [router]);
 
-      {/* 3D Scene area — fills the window body */}
-      <div className="relative w-full h-full" style={{ background: 'linear-gradient(180deg, #e8e8ec 0%, #d4d4dc 100%)' }}>
-        {SceneComponent ? (
-          <SceneComponent
-            cards={packCards}
-            onStageChange={handleStageChange}
-            onCardReveal={handleCardReveal}
-            onComplete={handleComplete}
-            className="absolute inset-0"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <div className="text-center">
-              {loadError ? (
-                <div className="xp-window p-4" style={{ maxWidth: 300 }}>
-                  <p className="text-[11px] text-[#c00] mb-1">Error loading 3D scene</p>
-                  <p className="text-[10px] text-[#666] font-mono">{loadError}</p>
+  return (
+    <>
+      {/* Full-viewport transparent overlay — XP interface visible behind */}
+      <div className="fixed inset-0 z-50">
+        {/* 3D Canvas fills viewport, transparent background */}
+        <div className="w-full h-full">
+          {SceneComponent ? (
+            <SceneComponent
+              cards={packCards}
+              onStageChange={handleStageChange}
+              onCardReveal={handleCardReveal}
+              onComplete={handleComplete}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <div className="xp-window p-0">
+                <div className="px-6 py-4 flex items-center gap-3">
+                  <div className="w-5 h-5 border-2 border-[#316ac5] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-[11px] text-[#666]">Loading 3D...</span>
                 </div>
-              ) : (
-                <>
-                  <div className="w-8 h-8 border-2 border-[#316ac5] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                  <p className="text-[11px] text-[#666]">Loading 3D scene...</p>
-                </>
-              )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         {/* UI Overlays */}
         <StageHint stage={stage} revealedCount={revealedCount} total={packCards.length} />
         {stage === 'revealing' && lastRevealed && <CardRevealInfo card={lastRevealed} />}
-        {showSummary && <PackSummary cards={packCards} onNewPack={handleNewPack} />}
+        {showSummary && <PackSummary cards={packCards} onNewPack={handleNewPack} onClose={handleClose} />}
+
+        {/* Close button */}
+        {!showSummary && (
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 z-[60] xp-button px-3 py-1 text-[11px]"
+          >
+            Close
+          </button>
+        )}
       </div>
-    </div>
+    </>
   );
 }

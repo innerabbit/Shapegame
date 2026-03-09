@@ -2,8 +2,8 @@
 
 import { useRef, useState, useCallback } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Environment, ContactShadows, PerspectiveCamera } from '@react-three/drei';
-import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing';
+import { Environment, PerspectiveCamera } from '@react-three/drei';
+import { EffectComposer, Bloom } from '@react-three/postprocessing';
 import * as THREE from 'three';
 
 import { BoosterPack, type PackState } from './booster-pack';
@@ -139,17 +139,8 @@ function SceneController({
       {/* Cool fill */}
       <pointLight position={[3, -1, 3]} intensity={0.2} color="#4488ff" />
 
-      {/* ── Environment for reflections ── */}
-      <Environment preset="studio" environmentIntensity={0.4} />
-
-      {/* ── Contact shadow for grounding ── */}
-      <ContactShadows
-        position={[0, -2, 0]}
-        opacity={0.3}
-        scale={8}
-        blur={2}
-        far={4}
-      />
+      {/* ── Environment for reflections only (no visible background) ── */}
+      <Environment preset="studio" environmentIntensity={0.4} background={false} />
 
       {/* ── Particles ── */}
       <PackParticles active={packState === 'tearing' || packState === 'opened'} />
@@ -190,14 +181,13 @@ function SceneController({
         );
       })}
 
-      {/* ── Postprocessing ── */}
+      {/* ── Postprocessing (no vignette — transparent bg) ── */}
       <EffectComposer>
         <Bloom
           luminanceThreshold={0.85}
           luminanceSmoothing={0.3}
           intensity={0.4}
         />
-        <Vignette offset={0.25} darkness={0.35} />
       </EffectComposer>
     </>
   );

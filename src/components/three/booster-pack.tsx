@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
+import { HoloMaterialImpl } from './holo-material';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -31,14 +32,38 @@ function easeInQuad(t: number): number {
   return t * t;
 }
 
+// ── Holographic pack material hook ────────────────────────────
+
+function useHoloPackMaterial(meshRef: React.RefObject<THREE.Mesh | null>, matRef: React.MutableRefObject<any>) {
+  useEffect(() => {
+    if (!meshRef.current) return;
+    const mat = new HoloMaterialImpl({
+      uTime: 0,
+      uHoloIntensity: 0.7,
+      uBaseColor: new THREE.Color('#0a0318'),
+      uFresnelPower: 2.5,
+      uRainbowSpeed: 0.3,
+      uRainbowScale: 1.2,
+      uMetalness: 0.8,
+      uRoughness: 0.15,
+    });
+    meshRef.current.material = mat;
+    matRef.current = mat;
+    return () => { mat.dispose(); };
+  }, [meshRef, matRef]);
+}
+
 // ── Pack Component ─────────────────────────────────────────────
 
 export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const bodyRef = useRef<THREE.Group>(null);
   const flapRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
+  const bodyMeshRef = useRef<THREE.Mesh>(null);
+  const flapMeshRef = useRef<THREE.Mesh>(null);
+  const bodyMatRef = useRef<any>(null);
+  const flapMatRef = useRef<any>(null);
 
   // Animation progress trackers
   const enterProgress = useRef(0);
@@ -48,9 +73,27 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
   const [tearDone, setTearDone] = useState(false);
   const [hovered, setHovered] = useState(false);
 
+  // Apply holographic material to body and flap
+  useHoloPackMaterial(bodyMeshRef, bodyMatRef);
+  useHoloPackMaterial(flapMeshRef, flapMatRef);
+
   useFrame((frameState, delta) => {
     if (!groupRef.current) return;
     const t = frameState.clock.elapsedTime;
+
+    // Update shader time
+    if (bodyMatRef.current) {
+      bodyMatRef.current.uTime = t;
+      // Intensify holo on hover
+      const targetIntensity = hovered && state === 'idle' ? 0.9 : 0.7;
+      bodyMatRef.current.uHoloIntensity = THREE.MathUtils.lerp(
+        bodyMatRef.current.uHoloIntensity, targetIntensity, 0.05
+      );
+    }
+    if (flapMatRef.current) {
+      flapMatRef.current.uTime = t;
+      flapMatRef.current.uHoloIntensity = bodyMatRef.current?.uHoloIntensity ?? 0.7;
+    }
 
     // ── Enter animation: fly in from top-right ──
     if (state === 'entering') {
@@ -68,7 +111,6 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
       groupRef.current.position.y = Math.sin(t * 1.0) * 0.06;
       groupRef.current.rotation.y = Math.sin(t * 0.4) * 0.08;
       groupRef.current.rotation.x = Math.sin(t * 0.6) * 0.02;
-      // Hover scale
       const sc = hovered ? 1.04 : 1;
       groupRef.current.scale.lerp(new THREE.Vector3(sc, sc, sc), 0.1);
     }
@@ -81,10 +123,7 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
       groupRef.current.position.x = Math.sin(t * 50) * shakeIntensity;
       groupRef.current.position.y = Math.cos(t * 45) * shakeIntensity * 0.5;
       groupRef.current.rotation.z = Math.sin(t * 40) * shakeIntensity * 0.8;
-      // Squeeze
-      const squeezeX = 1 + p * 0.03;
-      const squeezeY = 1 - p * 0.04;
-      groupRef.current.scale.set(squeezeX, squeezeY, 1);
+      groupRef.current.scale.set(1 + p * 0.03, 1 - p * 0.04, 1);
     }
 
     // ── Tearing: flap rotates open, light beam ──
@@ -92,33 +131,27 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
       tearProgress.current = Math.min(1, tearProgress.current + delta * 1.2);
       const p = tearProgress.current;
 
-      // Reset shake
       groupRef.current.position.x = 0;
       groupRef.current.rotation.z = 0;
       groupRef.current.scale.set(1, 1, 1);
 
-      // Flap rotates open (hinge at bottom of flap)
       if (flapRef.current) {
         const flapAngle = easeOutCubic(p) * Math.PI * 0.85;
         flapRef.current.rotation.x = -flapAngle;
-        // Slight upward drift
         flapRef.current.position.y = easeOutCubic(p) * 0.3;
       }
 
-      // Light beam from inside
       if (lightRef.current) {
         lightRef.current.intensity = Math.sin(p * Math.PI) * 8;
         lightRef.current.position.y = p * 0.5;
       }
 
-      // Inner glow
       if (glowRef.current) {
         const mat = glowRef.current.material as THREE.MeshBasicMaterial;
         mat.opacity = Math.sin(p * Math.PI) * 0.6;
         glowRef.current.scale.setScalar(1 + p * 2);
       }
 
-      // Trigger tear complete
       if (p >= 1 && !tearDone) {
         setTearDone(true);
         onTearComplete?.();
@@ -143,28 +176,19 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
   return (
     <group
       ref={groupRef}
-      position={[3, 4, -2]} // starts off-screen, enters via animation
+      position={[3, 4, -2]}
       onClick={isClickable ? onClick : undefined}
       onPointerOver={() => { if (isClickable) { setHovered(true); document.body.style.cursor = 'pointer'; } }}
       onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
     >
-      {/* ── Pack body ── */}
-      <group ref={bodyRef}>
-        <RoundedBox args={[1.8, 2.6, 0.35]} radius={0.06} smoothness={4} position={[0, -0.2, 0]}>
-          <meshPhysicalMaterial
-            color="#0d0520"
-            metalness={0.6}
-            roughness={0.3}
-            clearcoat={0.8}
-            clearcoatRoughness={0.2}
-            emissive="#ff6600"
-            emissiveIntensity={hovered && isClickable ? 0.12 : 0.03}
-          />
+      {/* ── Pack body (holographic material) ── */}
+      <group>
+        <RoundedBox ref={bodyMeshRef} args={[1.8, 2.6, 0.35]} radius={0.06} smoothness={4} position={[0, -0.2, 0]}>
+          <meshBasicMaterial visible={false} />
         </RoundedBox>
 
         {/* Pack face decoration */}
         <group position={[0, 0, 0.19]}>
-          {/* Orange accent line at top */}
           <mesh position={[0, 0.65, 0]}>
             <planeGeometry args={[1.5, 0.04]} />
             <meshBasicMaterial color="#ff6600" />
@@ -195,7 +219,7 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
           <Text
             position={[0, -0.2, 0]}
             fontSize={0.065}
-            color="#888888"
+            color="#cccccc"
             anchorX="center"
             anchorY="middle"
             font="/fonts/inter-bold.woff2"
@@ -204,7 +228,6 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
             BOOSTER PACK
           </Text>
 
-          {/* Orange accent line at bottom */}
           <mesh position={[0, -0.65, 0]}>
             <planeGeometry args={[1.5, 0.04]} />
             <meshBasicMaterial color="#ff6600" transparent opacity={0.5} />
@@ -213,7 +236,7 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
           <Text
             position={[0, -0.85, 0]}
             fontSize={0.05}
-            color="#555555"
+            color="#999999"
             anchorX="center"
             anchorY="middle"
             font="/fonts/inter-bold.woff2"
@@ -224,22 +247,12 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
         </group>
       </group>
 
-      {/* ── Flap (top, tears off) ── */}
-      {/* Pivot group positioned at the seam line between body and flap */}
+      {/* ── Flap (top, tears off — also holographic) ── */}
       <group position={[0, 1.1, 0]}>
         <group ref={flapRef}>
-          <RoundedBox args={[1.8, 0.7, 0.35]} radius={0.06} smoothness={4} position={[0, 0.35, 0]}>
-            <meshPhysicalMaterial
-              color="#0d0520"
-              metalness={0.6}
-              roughness={0.3}
-              clearcoat={0.8}
-              clearcoatRoughness={0.2}
-              emissive="#ff6600"
-              emissiveIntensity={0.03}
-            />
+          <RoundedBox ref={flapMeshRef} args={[1.8, 0.7, 0.35]} radius={0.06} smoothness={4} position={[0, 0.35, 0]}>
+            <meshBasicMaterial visible={false} />
           </RoundedBox>
-          {/* Seam line (tear line visual) */}
           <mesh position={[0, 0, 0.18]}>
             <planeGeometry args={[1.6, 0.02]} />
             <meshBasicMaterial color="#ff6600" transparent opacity={0.3} />
@@ -247,7 +260,7 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
         </group>
       </group>
 
-      {/* ── Light beam from inside (during tear) ── */}
+      {/* ── Light beam from inside ── */}
       <pointLight ref={lightRef} position={[0, 0.5, 0]} intensity={0} color="#ffaa44" distance={5} />
 
       {/* ── Glow effect ── */}

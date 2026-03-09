@@ -4,27 +4,26 @@ import { useState } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import Link from 'next/link';
+import { XpWindow } from '@/components/xp';
 
 type PackType = 'booster' | 'display';
 
 const PACKS = {
   booster: {
     name: 'Booster Pack',
-    emoji: '📦',
+    icon: '📦',
     cards: 6,
     price: 0.05,
     description: '6 random cards. Guaranteed 1 Rare or better.',
     features: ['6 cards per pack', '1 guaranteed Rare+', 'Chance for Legendary'],
-    color: 'blue',
   },
   display: {
     name: 'Display Box',
-    emoji: '🎁',
+    icon: '🎁',
     cards: 36,
     price: 0.25,
     description: '6 booster packs (36 cards). Better value, more chances.',
     features: ['6 packs (36 cards)', '6 guaranteed Rare+', 'Bonus foil card', 'Best value'],
-    color: 'yellow',
   },
 } as const;
 
@@ -42,200 +41,179 @@ export default function ShopPage() {
       setVisible(true);
       return;
     }
-    // TODO: Implement Solana transaction
     alert(`Would buy ${quantity}x ${pack.name} for ${total} SOL`);
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-12 space-y-12">
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-          The Shop
-        </h1>
-        <p className="text-neutral-500 max-w-md mx-auto">
-          Buy booster packs to grow your collection. Each pack contains random
-          cards with weighted rarity drops.
-        </p>
-      </div>
-
-      {/* Pack Selection */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-        {(Object.entries(PACKS) as [PackType, typeof PACKS[PackType]][]).map(
-          ([key, p]) => {
-            const isSelected = selectedPack === key;
-            const isBest = key === 'display';
-            return (
-              <button
-                key={key}
-                onClick={() => {
-                  setSelectedPack(key);
-                  setQuantity(1);
-                }}
-                className={`
-                  relative text-left rounded-xl border-2 p-6 transition-all
-                  ${isSelected
-                    ? p.color === 'yellow'
-                      ? 'border-yellow-500 bg-yellow-950/30 ring-1 ring-yellow-500/30'
-                      : 'border-blue-500 bg-blue-950/30 ring-1 ring-blue-500/30'
-                    : 'border-neutral-800 bg-neutral-900/50 hover:border-neutral-700'
-                  }
-                `}
-              >
-                {isBest && (
-                  <div className="absolute -top-3 right-4 bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    BEST VALUE
-                  </div>
-                )}
-                <div className="flex items-start gap-4">
-                  <span className="text-5xl">{p.emoji}</span>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold">{p.name}</h3>
-                    <p className="text-sm text-neutral-500 mt-1">
-                      {p.description}
-                    </p>
-                    <div className="mt-3 space-y-1">
-                      {p.features.map((f) => (
-                        <div
-                          key={f}
-                          className="flex items-center gap-2 text-xs text-neutral-400"
-                        >
-                          <span className="text-green-400">✓</span>
-                          {f}
+    <div className="space-y-4">
+      <XpWindow title="SHAPE_CARDS Shop" icon="🛒">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Left — pack selection */}
+          <div className="flex-1">
+            <fieldset className="xp-groupbox">
+              <legend className="xp-groupbox-legend">Select Pack Type</legend>
+              <div className="space-y-2">
+                {(Object.entries(PACKS) as [PackType, typeof PACKS[PackType]][]).map(
+                  ([key, p]) => {
+                    const isSelected = selectedPack === key;
+                    return (
+                      <label
+                        key={key}
+                        className={`flex items-start gap-3 p-3 border cursor-pointer ${
+                          isSelected
+                            ? 'border-[#003c74] bg-[#e8f0fe]'
+                            : 'border-[#c3c0b6] bg-white hover:bg-[#f5f3ee]'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="pack"
+                          checked={isSelected}
+                          onChange={() => {
+                            setSelectedPack(key);
+                            setQuantity(1);
+                          }}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">{p.icon}</span>
+                            <span className="text-[12px] font-bold text-[#222]">{p.name}</span>
+                            {key === 'display' && (
+                              <span className="text-[9px] bg-[#eab308] text-black px-1.5 py-[1px] font-bold">
+                                BEST VALUE
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[#666] mt-1">{p.description}</p>
+                          <div className="mt-2 space-y-0.5">
+                            {p.features.map((f) => (
+                              <div key={f} className="text-[11px] text-[#444] flex items-center gap-1">
+                                <span className="text-[#22a846]">&#10003;</span>
+                                {f}
+                              </div>
+                            ))}
+                          </div>
+                          <div className="mt-2 text-[14px] font-bold text-[#003399]">
+                            {p.price} SOL
+                          </div>
                         </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 flex items-baseline gap-1">
-                      <span className="text-2xl font-black text-white">
-                        {p.price}
-                      </span>
-                      <span className="text-sm text-neutral-500">SOL</span>
-                    </div>
+                      </label>
+                    );
+                  },
+                )}
+              </div>
+            </fieldset>
+          </div>
+
+          {/* Right — purchase */}
+          <div className="lg:w-64">
+            <fieldset className="xp-groupbox">
+              <legend className="xp-groupbox-legend">Purchase</legend>
+
+              <div className="space-y-3">
+                {/* Quantity */}
+                <div>
+                  <label className="text-[11px] text-[#222] block mb-1">Quantity:</label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      className="xp-button px-2 py-0"
+                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                    >
+                      -
+                    </button>
+                    <input
+                      type="text"
+                      readOnly
+                      value={quantity}
+                      className="xp-input w-12 text-center"
+                    />
+                    <button
+                      className="xp-button px-2 py-0"
+                      onClick={() => setQuantity(Math.min(10, quantity + 1))}
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
-              </button>
-            );
-          },
-        )}
-      </div>
 
-      {/* Purchase Panel */}
-      <div className="max-w-md mx-auto bg-neutral-900 border border-neutral-800 rounded-xl p-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-neutral-400">Quantity</span>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-8 h-8 rounded bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-lg transition-colors"
-            >
-              −
-            </button>
-            <span className="w-10 text-center font-bold text-lg">{quantity}</span>
-            <button
-              onClick={() => setQuantity(Math.min(10, quantity + 1))}
-              className="w-8 h-8 rounded bg-neutral-800 hover:bg-neutral-700 flex items-center justify-center text-lg transition-colors"
-            >
-              +
-            </button>
-          </div>
-        </div>
+                {/* Summary */}
+                <div className="border border-[#c3c0b6] bg-[#f5f3ee] p-2 space-y-1">
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-[#666]">{quantity}x {pack.name}</span>
+                    <span className="font-bold">{total.toFixed(2)} SOL</span>
+                  </div>
+                  <div className="flex justify-between text-[11px]">
+                    <span className="text-[#666]">Cards total</span>
+                    <span className="font-bold">{pack.cards * quantity}</span>
+                  </div>
+                  <div className="border-t border-[#c3c0b6] pt-1 flex justify-between text-[12px]">
+                    <span className="font-bold text-[#222]">Total:</span>
+                    <span className="font-bold text-[#003399]">{total.toFixed(2)} SOL</span>
+                  </div>
+                </div>
 
-        <div className="border-t border-neutral-800 pt-4 space-y-2">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-500">
-              {quantity}x {pack.name}
-            </span>
-            <span className="font-mono">{total.toFixed(2)} SOL</span>
-          </div>
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-neutral-500">Cards total</span>
-            <span className="font-mono">{pack.cards * quantity}</span>
-          </div>
-        </div>
+                {/* Buy button */}
+                <button
+                  onClick={handleBuy}
+                  className={`xp-button w-full py-[5px] text-[12px] font-bold ${
+                    connected ? 'xp-button-primary' : ''
+                  }`}
+                >
+                  {connected
+                    ? `🛒 Buy for ${total.toFixed(2)} SOL`
+                    : '👛 Connect Wallet to Buy'
+                  }
+                </button>
 
-        <button
-          onClick={handleBuy}
-          className={`
-            w-full py-3 rounded-lg font-bold text-lg transition-all
-            ${connected
-              ? 'bg-gradient-to-r from-yellow-500 to-amber-500 text-black hover:from-yellow-400 hover:to-amber-400 shadow-lg shadow-yellow-500/20 hover:shadow-yellow-400/30'
-              : 'bg-gradient-to-r from-blue-600 to-blue-500 text-white hover:from-blue-500 hover:to-blue-400'
-            }
-          `}
-        >
-          {connected ? (
-            <>Buy for {total.toFixed(2)} SOL</>
-          ) : (
-            <>Connect Wallet to Buy</>
-          )}
-        </button>
-
-        {!connected && (
-          <p className="text-center text-xs text-neutral-600">
-            You need a Solana wallet (Phantom, Solflare) to purchase
-          </p>
-        )}
-      </div>
-
-      {/* What You Get */}
-      <div className="max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-center mb-8">
-          What&apos;s Inside
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            {
-              tier: 'Common',
-              material: 'Flat',
-              chance: '58%',
-              border: 'border-neutral-600',
-              text: 'text-neutral-400',
-            },
-            {
-              tier: 'Rare',
-              material: '3D',
-              chance: '14%',
-              border: 'border-blue-600',
-              text: 'text-blue-400',
-            },
-            {
-              tier: 'Epic',
-              material: 'Chrome',
-              chance: '3%',
-              border: 'border-purple-600',
-              text: 'text-purple-400',
-            },
-            {
-              tier: 'Legendary',
-              material: 'Gold',
-              chance: '0.5%',
-              border: 'border-yellow-500',
-              text: 'text-yellow-400',
-            },
-          ].map(({ tier, material, chance, border, text }) => (
-            <div
-              key={tier}
-              className={`${border} border rounded-lg p-4 bg-neutral-900/50 text-center`}
-            >
-              <div className={`font-bold ${text}`}>{tier}</div>
-              <div className="text-xs text-neutral-600 mt-0.5">{material}</div>
-              <div className="text-lg font-mono text-neutral-300 mt-2">
-                {chance}
+                {!connected && (
+                  <p className="text-[10px] text-[#888] text-center">
+                    You need a Solana wallet (Phantom, Solflare)
+                  </p>
+                )}
               </div>
-            </div>
-          ))}
+            </fieldset>
+          </div>
         </div>
-      </div>
+      </XpWindow>
 
-      {/* Preview link */}
-      <div className="text-center">
-        <Link
-          href="/open"
-          className="text-sm text-neutral-500 hover:text-amber-400 transition-colors"
-        >
-          Preview the 3D pack opening animation →
-        </Link>
-      </div>
+      {/* Drop rates window */}
+      <XpWindow title="Drop Rate Information" icon="📊">
+        <fieldset className="xp-groupbox">
+          <legend className="xp-groupbox-legend">What&apos;s Inside a Pack</legend>
+          <div className="xp-listview">
+            <div className="xp-listview-header grid grid-cols-4">
+              <span>Tier</span>
+              <span>Material</span>
+              <span>Drop Rate</span>
+              <span>Probability</span>
+            </div>
+            {[
+              { tier: 'Common', material: 'Flat', chance: '58%', bar: 58, color: '#808080' },
+              { tier: 'Rare', material: '3D', chance: '14%', bar: 14, color: '#3b82f6' },
+              { tier: 'Epic', material: 'Chrome', chance: '3%', bar: 3, color: '#8b5cf6' },
+              { tier: 'Legendary', material: 'Gold', chance: '0.5%', bar: 0.5, color: '#eab308' },
+            ].map(({ tier, material, chance, bar, color }) => (
+              <div key={tier} className="xp-listview-row grid grid-cols-4 items-center">
+                <span className="font-bold" style={{ color }}>{tier}</span>
+                <span>{material}</span>
+                <span>{chance}</span>
+                <div className="xp-progress h-[10px]">
+                  <div
+                    className="h-full"
+                    style={{ width: `${Math.max(2, bar)}%`, background: color }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </fieldset>
+        <div className="mt-3 text-center">
+          <Link href="/open" className="xp-link">
+            Preview the 3D pack opening animation &rarr;
+          </Link>
+        </div>
+      </XpWindow>
     </div>
   );
 }

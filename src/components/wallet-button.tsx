@@ -26,22 +26,16 @@ export function WalletButton() {
     <button
       onClick={handleClick}
       disabled={connecting}
-      className={`
-        flex items-center gap-2 px-3 py-1.5 rounded text-sm font-medium
-        transition-all border
-        ${connected
-          ? 'bg-green-900/40 border-green-700 text-green-300 hover:bg-green-900/60'
-          : 'bg-white/10 border-white/20 text-white hover:bg-white/20'
-        }
-        disabled:opacity-50
-      `}
+      className={`xp-button flex items-center gap-[6px] px-3 py-[2px] text-[11px] ${
+        connected ? 'xp-button-primary' : ''
+      }`}
     >
       {connecting ? (
-        <span className="animate-pulse">Connecting...</span>
+        <span>Connecting...</span>
       ) : connected ? (
         <>
-          <span className="w-2 h-2 rounded-full bg-green-400" />
-          <span className="font-mono text-xs">{address}</span>
+          <span style={{ color: '#22a846', fontSize: 8 }}>&#9679;</span>
+          <span style={{ fontFamily: 'monospace', fontSize: 10 }}>{address}</span>
         </>
       ) : (
         <>

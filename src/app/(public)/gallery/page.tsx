@@ -8,9 +8,9 @@ import {
   RARITY_LABELS,
   RARITY_COLORS,
   MANA_COLORS,
-  BACKGROUNDS,
 } from '@/lib/constants';
 import type { RarityTier } from '@/types/cards';
+import { XpWindow, XpGroupBox } from '@/components/xp';
 
 type SortBy = 'number' | 'rarity' | 'atk' | 'def' | 'hp';
 
@@ -39,7 +39,6 @@ export default function GalleryPage() {
       cards = cards.filter((c) => c.material === materialFilter);
     }
 
-    // Sort
     switch (sortBy) {
       case 'rarity': {
         const order = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
@@ -58,14 +57,12 @@ export default function GalleryPage() {
         cards = [...cards].sort((a, b) => b.hp - a.hp);
         break;
       default:
-        // number — already sorted
         break;
     }
 
     return cards;
   }, [allCards, rarityFilter, shapeFilter, materialFilter, sortBy]);
 
-  // Stats
   const stats = useMemo(() => {
     const byRarity: Record<string, number> = {};
     const byShape: Record<string, number> = {};
@@ -82,246 +79,237 @@ export default function GalleryPage() {
     (materialFilter !== 'all' ? 1 : 0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-12 space-y-8">
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-          Card Gallery
-        </h1>
-        <p className="text-neutral-500 max-w-lg mx-auto">
-          Browse all {stats.total} unique cards in the SHAPE_CARDS collection.
-          Filter by rarity, shape, or material to find the perfect card.
-        </p>
-      </div>
+    <div className="space-y-4">
+      <XpWindow
+        title={`Card Gallery — ${stats.total} cards`}
+        icon="🖼️"
+        toolbar={
+          <div className="flex items-center gap-2 flex-wrap w-full">
+            <span className="text-[11px] text-[#666]">Filters:</span>
+            <select
+              value={rarityFilter}
+              onChange={(e) => setRarityFilter(e.target.value)}
+              className="xp-select"
+            >
+              <option value="all">All Rarities</option>
+              {(['common', 'rare', 'epic', 'legendary'] as RarityTier[]).map((r) => (
+                <option key={r} value={r}>
+                  {RARITY_LABELS[r]} ({stats.byRarity[r] || 0})
+                </option>
+              ))}
+            </select>
 
-      {/* Stats bar */}
-      <div className="flex items-center justify-center gap-4 flex-wrap">
-        {(['common', 'rare', 'epic', 'legendary'] as RarityTier[]).map((r) => (
-          <div
-            key={r}
-            className="flex items-center gap-2 text-sm"
-          >
-            <span
-              className={`inline-block w-2.5 h-2.5 rounded-full ${
-                r === 'common'
-                  ? 'bg-neutral-400'
-                  : r === 'rare'
-                  ? 'bg-blue-400'
-                  : r === 'epic'
-                  ? 'bg-purple-400'
-                  : 'bg-yellow-400'
-              }`}
-            />
-            <span className="text-neutral-400">
-              {RARITY_LABELS[r]}: <span className="text-white font-mono">{stats.byRarity[r] || 0}</span>
+            <select
+              value={shapeFilter}
+              onChange={(e) => setShapeFilter(e.target.value)}
+              className="xp-select"
+            >
+              <option value="all">All Shapes</option>
+              {SHAPES.map((s) => (
+                <option key={s.shape} value={s.shape}>
+                  {s.emoji} {s.shape} ({stats.byShape[s.shape] || 0})
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={materialFilter}
+              onChange={(e) => setMaterialFilter(e.target.value)}
+              className="xp-select"
+            >
+              <option value="all">All Materials</option>
+              <option value="flat">Flat (Common)</option>
+              <option value="3d">3D (Rare)</option>
+              <option value="chrome">Chrome (Epic)</option>
+              <option value="gold">Gold (Legendary)</option>
+            </select>
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as SortBy)}
+              className="xp-select"
+            >
+              <option value="number">Sort by #</option>
+              <option value="rarity">Sort by Rarity</option>
+              <option value="atk">Sort by ATK</option>
+              <option value="def">Sort by DEF</option>
+              <option value="hp">Sort by HP</option>
+            </select>
+
+            {activeFilters > 0 && (
+              <button
+                onClick={() => {
+                  setRarityFilter('all');
+                  setShapeFilter('all');
+                  setMaterialFilter('all');
+                }}
+                className="xp-button px-2 py-0 text-[10px]"
+              >
+                Clear ({activeFilters})
+              </button>
+            )}
+
+            <span className="text-[11px] text-[#888] ml-auto">
+              {filteredCards.length} card{filteredCards.length !== 1 ? 's' : ''}
             </span>
           </div>
-        ))}
-      </div>
-
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Rarity filter */}
-        <select
-          value={rarityFilter}
-          onChange={(e) => setRarityFilter(e.target.value)}
-          className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">All Rarities</option>
-          {(['common', 'rare', 'epic', 'legendary'] as RarityTier[]).map((r) => (
-            <option key={r} value={r}>
-              {RARITY_LABELS[r]} ({stats.byRarity[r] || 0})
-            </option>
-          ))}
-        </select>
-
-        {/* Shape filter */}
-        <select
-          value={shapeFilter}
-          onChange={(e) => setShapeFilter(e.target.value)}
-          className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">All Shapes</option>
-          {SHAPES.map((s) => (
-            <option key={s.shape} value={s.shape}>
-              {s.emoji} {s.shape} ({stats.byShape[s.shape] || 0})
-            </option>
-          ))}
-        </select>
-
-        {/* Material filter */}
-        <select
-          value={materialFilter}
-          onChange={(e) => setMaterialFilter(e.target.value)}
-          className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="all">All Materials</option>
-          <option value="flat">Flat (Common)</option>
-          <option value="3d">3D (Rare)</option>
-          <option value="chrome">Chrome (Epic)</option>
-          <option value="gold">Gold (Legendary)</option>
-        </select>
-
-        {/* Sort */}
-        <select
-          value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortBy)}
-          className="bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-        >
-          <option value="number">Sort by #</option>
-          <option value="rarity">Sort by Rarity</option>
-          <option value="atk">Sort by ATK</option>
-          <option value="def">Sort by DEF</option>
-          <option value="hp">Sort by HP</option>
-        </select>
-
-        {activeFilters > 0 && (
-          <button
-            onClick={() => {
-              setRarityFilter('all');
-              setShapeFilter('all');
-              setMaterialFilter('all');
-            }}
-            className="text-xs text-red-400 hover:text-red-300 transition-colors"
-          >
-            Clear filters ({activeFilters})
-          </button>
-        )}
-
-        <div className="ml-auto text-sm text-neutral-500">
-          {filteredCards.length} card{filteredCards.length !== 1 ? 's' : ''}
+        }
+        statusBar={
+          <>
+            <div>{filteredCards.length} items</div>
+            <div className="flex-1 text-right">SHAPE_CARDS Gallery</div>
+          </>
+        }
+      >
+        {/* Card Grid */}
+        <div className="xp-listview p-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
+            {filteredCards.map((card) => (
+              <button
+                key={card.card_number}
+                onClick={() => setSelectedCard(card)}
+                className="flex flex-col items-center gap-1 hover:bg-[#316ac5] hover:text-white p-1 rounded-sm cursor-pointer"
+              >
+                <CardPreview card={card} size="sm" />
+                <div className="text-center">
+                  <div className="text-[10px] font-mono opacity-60">
+                    #{String(card.card_number).padStart(3, '0')}
+                  </div>
+                  <div className="text-[10px] capitalize">
+                    {card.shape}
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
 
-      {/* Card Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {filteredCards.map((card) => (
-          <button
-            key={card.card_number}
-            onClick={() => setSelectedCard(card)}
-            className="flex flex-col items-center gap-2 transition-transform hover:scale-105 focus:outline-none group"
-          >
-            <CardPreview card={card} size="sm" />
-            <div className="text-center space-y-0.5">
-              <div className="text-xs text-neutral-500 font-mono">
-                #{String(card.card_number).padStart(3, '0')}
-              </div>
-              <div className="text-xs text-neutral-400 capitalize group-hover:text-white transition-colors">
-                {card.shape}
-              </div>
+        {filteredCards.length === 0 && (
+          <div className="xp-infobar mt-3">
+            <span className="text-lg">🔍</span>
+            <div>
+              <span className="font-bold">No cards match your filters.</span>{' '}
+              <button
+                onClick={() => {
+                  setRarityFilter('all');
+                  setShapeFilter('all');
+                  setMaterialFilter('all');
+                }}
+                className="xp-link"
+              >
+                Clear all filters
+              </button>
             </div>
-          </button>
-        ))}
-      </div>
+          </div>
+        )}
+      </XpWindow>
 
-      {filteredCards.length === 0 && (
-        <div className="text-center py-16">
-          <span className="text-4xl mb-3 block">🔍</span>
-          <p className="text-neutral-500">No cards match your filters.</p>
-          <button
-            onClick={() => {
-              setRarityFilter('all');
-              setShapeFilter('all');
-              setMaterialFilter('all');
-            }}
-            className="text-sm text-blue-400 hover:text-blue-300 mt-2 transition-colors"
-          >
-            Clear all filters
-          </button>
-        </div>
-      )}
-
-      {/* Card Detail Modal */}
+      {/* Card Detail Dialog */}
       {selectedCard && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.4)' }}
           onClick={() => setSelectedCard(null)}
         >
           <div
-            className="bg-neutral-900 border border-neutral-700 rounded-2xl p-6 max-w-lg w-full space-y-4"
+            className="xp-window max-w-md w-full"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Card header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-xl font-bold capitalize">
-                  {selectedCard.shape}
-                </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      RARITY_COLORS[selectedCard.rarity_tier].bg
-                    } ${RARITY_COLORS[selectedCard.rarity_tier].text}`}
-                  >
-                    {RARITY_LABELS[selectedCard.rarity_tier]}
-                  </span>
-                  <span className="text-xs text-neutral-500 capitalize">
-                    {selectedCard.material} · {selectedCard.background.replace('_', ' ')}
-                  </span>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedCard(null)}
-                className="text-neutral-500 hover:text-white transition-colors text-xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Card preview */}
-            <div className="flex justify-center py-4">
-              <CardPreview card={selectedCard} size="lg" />
-            </div>
-
-            {/* Stats grid */}
-            <div className="grid grid-cols-4 gap-3">
-              <div className="bg-neutral-800 rounded-lg p-3 text-center">
-                <div className="text-xs text-neutral-500 mb-1">ATK</div>
-                <div className="text-lg font-bold text-red-400">{selectedCard.atk}</div>
-              </div>
-              <div className="bg-neutral-800 rounded-lg p-3 text-center">
-                <div className="text-xs text-neutral-500 mb-1">DEF</div>
-                <div className="text-lg font-bold text-blue-400">{selectedCard.def}</div>
-              </div>
-              <div className="bg-neutral-800 rounded-lg p-3 text-center">
-                <div className="text-xs text-neutral-500 mb-1">HP</div>
-                <div className="text-lg font-bold text-green-400">{selectedCard.hp}</div>
-              </div>
-              <div className="bg-neutral-800 rounded-lg p-3 text-center">
-                <div className="text-xs text-neutral-500 mb-1">Mana</div>
-                <div className="text-lg font-bold">
-                  {MANA_COLORS[selectedCard.mana_color].emoji}
-                </div>
-              </div>
-            </div>
-
-            {/* Ability */}
-            {selectedCard.ability && (
-              <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-3">
-                <div className="text-xs text-neutral-500 mb-1">Ability</div>
-                <div className="text-sm text-neutral-300">{selectedCard.ability}</div>
-              </div>
-            )}
-
-            {/* Card details */}
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Card #</span>
-                <span className="font-mono">{String(selectedCard.card_number).padStart(3, '0')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Drop Rate</span>
-                <span className="font-mono text-amber-400">
-                  {(selectedCard.base_rarity_pct * selectedCard.background_multiplier).toFixed(4)}%
+            <div className="xp-title-bar">
+              <div className="flex items-center gap-[6px]">
+                <span className="text-sm">🃏</span>
+                <span className="xp-title-text">
+                  Card #{String(selectedCard.card_number).padStart(3, '0')} — {selectedCard.shape}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Mana Color</span>
-                <span>{MANA_COLORS[selectedCard.mana_color].label}</span>
+              <div className="flex items-center gap-[2px]">
+                <button
+                  className="xp-btn-close"
+                  onClick={() => setSelectedCard(null)}
+                  aria-label="Close"
+                >
+                  <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
+                </button>
               </div>
-              <div className="flex justify-between">
-                <span className="text-neutral-500">Background</span>
-                <span className="capitalize">{selectedCard.background.replace('_', ' ')}</span>
+            </div>
+
+            <div className="xp-window-content">
+              <div className="flex flex-col sm:flex-row gap-4">
+                {/* Card preview */}
+                <div className="flex justify-center">
+                  <CardPreview card={selectedCard} size="lg" />
+                </div>
+
+                {/* Card info */}
+                <div className="flex-1 space-y-3">
+                  <div>
+                    <div className="text-[13px] font-bold text-[#003399] capitalize">
+                      {selectedCard.shape}
+                    </div>
+                    <span
+                      className={`text-[10px] px-2 py-[1px] font-bold inline-block mt-1 ${
+                        RARITY_COLORS[selectedCard.rarity_tier].bg
+                      } ${RARITY_COLORS[selectedCard.rarity_tier].text}`}
+                    >
+                      {RARITY_LABELS[selectedCard.rarity_tier]}
+                    </span>
+                  </div>
+
+                  <XpGroupBox label="Combat Stats">
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div>
+                        <div className="text-[10px] text-[#666]">ATK</div>
+                        <div className="text-[14px] font-bold text-[#cc3333]">{selectedCard.atk}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#666]">DEF</div>
+                        <div className="text-[14px] font-bold text-[#3366cc]">{selectedCard.def}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-[#666]">HP</div>
+                        <div className="text-[14px] font-bold text-[#22a846]">{selectedCard.hp}</div>
+                      </div>
+                    </div>
+                  </XpGroupBox>
+
+                  {selectedCard.ability && (
+                    <XpGroupBox label="Ability">
+                      <div className="text-[11px] text-[#222]">{selectedCard.ability}</div>
+                    </XpGroupBox>
+                  )}
+
+                  <XpGroupBox label="Details">
+                    <div className="space-y-1 text-[11px]">
+                      <div className="flex justify-between">
+                        <span className="text-[#666]">Material</span>
+                        <span className="capitalize">{selectedCard.material}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#666]">Background</span>
+                        <span className="capitalize">{selectedCard.background.replace('_', ' ')}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#666]">Mana</span>
+                        <span>{MANA_COLORS[selectedCard.mana_color].emoji} {MANA_COLORS[selectedCard.mana_color].label}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[#666]">Drop Rate</span>
+                        <span className="font-bold text-[#003399]">
+                          {(selectedCard.base_rarity_pct * selectedCard.background_multiplier).toFixed(4)}%
+                        </span>
+                      </div>
+                    </div>
+                  </XpGroupBox>
+                </div>
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <button
+                  className="xp-button px-4 py-[3px]"
+                  onClick={() => setSelectedCard(null)}
+                >
+                  Close
+                </button>
               </div>
             </div>
           </div>

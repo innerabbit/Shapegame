@@ -2,8 +2,8 @@
 
 import { useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { XpWindow, XpGroupBox } from '@/components/xp';
 
-// Placeholder leaderboard data — will come from Supabase later
 const MOCK_LEADERS = [
   { rank: 1, address: '7xKX...mR4p', twitter: '@shape_whale', cards: 142, legendaries: 8, epics: 19, completion: 72.8, score: 14200 },
   { rank: 2, address: 'Gh3P...vN2s', twitter: '@card_hunter', cards: 128, legendaries: 6, epics: 22, completion: 65.6, score: 12800 },
@@ -17,18 +17,11 @@ const MOCK_LEADERS = [
   { rank: 10, address: 'Ux3M...fQ4h', twitter: null, cards: 31, legendaries: 1, epics: 4, completion: 15.9, score: 3100 },
 ];
 
-function getRankEmoji(rank: number) {
+function getRankIcon(rank: number) {
   if (rank === 1) return '🥇';
   if (rank === 2) return '🥈';
   if (rank === 3) return '🥉';
   return `#${rank}`;
-}
-
-function getRankStyle(rank: number) {
-  if (rank === 1) return 'bg-yellow-950/40 border-yellow-700/50';
-  if (rank === 2) return 'bg-neutral-800/60 border-neutral-600/50';
-  if (rank === 3) return 'bg-amber-950/30 border-amber-800/40';
-  return 'bg-neutral-900/50 border-neutral-800/50';
 }
 
 export default function LeaderboardPage() {
@@ -41,155 +34,131 @@ export default function LeaderboardPage() {
   }, [publicKey]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12 space-y-10">
-      {/* Header */}
-      <div className="text-center space-y-3">
-        <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
-          Leaderboard
-        </h1>
-        <p className="text-neutral-500 max-w-lg mx-auto">
-          Top collectors ranked by collection score. Earn points by collecting
-          cards — rarer cards give more points.
-        </p>
-      </div>
-
-      {/* Scoring explanation */}
-      <div className="flex items-center justify-center gap-6 flex-wrap text-xs text-neutral-500">
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-neutral-500" />
-          <span>Common = 10 pts</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span>Rare = 50 pts</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-purple-500" />
-          <span>Epic = 200 pts</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-yellow-500" />
-          <span>Legendary = 1000 pts</span>
-        </div>
-      </div>
-
-      {/* Your rank (if connected) */}
-      {publicKey && (
-        <div className="bg-blue-950/30 border border-blue-800/50 rounded-xl p-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="text-blue-400 text-sm font-medium">Your Rank</span>
-            <span className="font-mono text-xs text-neutral-400">{userAddress}</span>
+    <div className="space-y-4">
+      <XpWindow
+        title="Leaderboard — Top Collectors"
+        icon="🏆"
+        statusBar={
+          <>
+            <div>10 collectors listed</div>
+            <div>Preview data</div>
+            <div className="flex-1 text-right">SHAPE_CARDS Leaderboard</div>
+          </>
+        }
+      >
+        {/* Scoring info */}
+        <XpGroupBox label="Scoring">
+          <div className="flex items-center gap-4 flex-wrap text-[11px]">
+            <span><span className="font-bold" style={{ color: '#808080' }}>Common</span> = 10 pts</span>
+            <span><span className="font-bold" style={{ color: '#3b82f6' }}>Rare</span> = 50 pts</span>
+            <span><span className="font-bold" style={{ color: '#8b5cf6' }}>Epic</span> = 200 pts</span>
+            <span><span className="font-bold" style={{ color: '#eab308' }}>Legendary</span> = 1000 pts</span>
           </div>
-          <div className="text-right">
-            <div className="text-sm text-neutral-400">Not ranked yet</div>
-            <div className="text-xs text-neutral-600 mt-0.5">Buy packs to start collecting!</div>
-          </div>
-        </div>
-      )}
+        </XpGroupBox>
 
-      {/* Podium — Top 3 */}
-      <div className="grid grid-cols-3 gap-4 max-w-xl mx-auto items-end">
-        {/* 2nd place */}
-        <div className="text-center space-y-2 pb-0">
-          <div className="text-3xl">🥈</div>
-          <div className="bg-neutral-800/60 border border-neutral-600/50 rounded-xl p-4">
-            <div className="font-mono text-xs text-neutral-400">{MOCK_LEADERS[1].address}</div>
-            <div className="text-lg font-bold mt-1">{MOCK_LEADERS[1].score.toLocaleString()}</div>
-            <div className="text-[10px] text-neutral-600">{MOCK_LEADERS[1].cards} cards</div>
+        {/* Your rank */}
+        {publicKey && (
+          <div className="xp-infobar mt-3">
+            <span className="text-lg">👤</span>
+            <div>
+              <span className="font-bold">Your Rank:</span>{' '}
+              <span className="font-mono text-[10px]">{userAddress}</span>{' '}
+              <span className="text-[#888]">— Not ranked yet. Buy packs to start collecting!</span>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 1st place */}
-        <div className="text-center space-y-2 pb-4">
-          <div className="text-4xl">🥇</div>
-          <div className="bg-yellow-950/40 border border-yellow-700/50 rounded-xl p-4 ring-1 ring-yellow-500/20">
-            <div className="font-mono text-xs text-yellow-400">{MOCK_LEADERS[0].address}</div>
+        {/* Top 3 podium — XP style */}
+        <div className="mt-3 flex items-end justify-center gap-3">
+          {/* 2nd */}
+          <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
+            <div className="text-2xl mb-1">🥈</div>
+            <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[1].address}</div>
+            <div className="text-[13px] font-bold text-[#003399] mt-1">
+              {MOCK_LEADERS[1].score.toLocaleString()}
+            </div>
+            <div className="text-[10px] text-[#888]">{MOCK_LEADERS[1].cards} cards</div>
+          </div>
+
+          {/* 1st */}
+          <div className="border-2 border-[#eab308] bg-[#fffbe6] p-3 text-center w-32 -mb-1">
+            <div className="text-3xl mb-1">🥇</div>
+            <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[0].address}</div>
             {MOCK_LEADERS[0].twitter && (
-              <div className="text-[10px] text-blue-400 mt-0.5">{MOCK_LEADERS[0].twitter}</div>
+              <div className="text-[10px] text-[#0066cc]">{MOCK_LEADERS[0].twitter}</div>
             )}
-            <div className="text-xl font-bold mt-1 text-yellow-300">{MOCK_LEADERS[0].score.toLocaleString()}</div>
-            <div className="text-[10px] text-neutral-500">{MOCK_LEADERS[0].cards} cards · {MOCK_LEADERS[0].legendaries} legendaries</div>
+            <div className="text-[14px] font-bold text-[#b8860b] mt-1">
+              {MOCK_LEADERS[0].score.toLocaleString()}
+            </div>
+            <div className="text-[10px] text-[#888]">{MOCK_LEADERS[0].cards} cards</div>
+          </div>
+
+          {/* 3rd */}
+          <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
+            <div className="text-2xl mb-1">🥉</div>
+            <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[2].address}</div>
+            <div className="text-[13px] font-bold text-[#003399] mt-1">
+              {MOCK_LEADERS[2].score.toLocaleString()}
+            </div>
+            <div className="text-[10px] text-[#888]">{MOCK_LEADERS[2].cards} cards</div>
           </div>
         </div>
 
-        {/* 3rd place */}
-        <div className="text-center space-y-2 pb-0">
-          <div className="text-3xl">🥉</div>
-          <div className="bg-amber-950/30 border border-amber-800/40 rounded-xl p-4">
-            <div className="font-mono text-xs text-neutral-400">{MOCK_LEADERS[2].address}</div>
-            <div className="text-lg font-bold mt-1">{MOCK_LEADERS[2].score.toLocaleString()}</div>
-            <div className="text-[10px] text-neutral-600">{MOCK_LEADERS[2].cards} cards</div>
+        {/* Full table — XP ListView style */}
+        <div className="xp-listview mt-4">
+          <div className="xp-listview-header grid grid-cols-12 gap-1">
+            <span className="col-span-1">Rank</span>
+            <span className="col-span-3">Collector</span>
+            <span className="col-span-2 text-center">Cards</span>
+            <span className="col-span-2 text-center">Legendaries</span>
+            <span className="col-span-2 text-center">Completion</span>
+            <span className="col-span-2 text-right">Score</span>
           </div>
-        </div>
-      </div>
-
-      {/* Full ranking table */}
-      <div className="space-y-2">
-        {/* Table header */}
-        <div className="grid grid-cols-12 gap-2 px-4 py-2 text-xs text-neutral-600 font-medium uppercase tracking-wider">
-          <div className="col-span-1">Rank</div>
-          <div className="col-span-3">Collector</div>
-          <div className="col-span-2 text-center">Cards</div>
-          <div className="col-span-2 text-center">Legendaries</div>
-          <div className="col-span-2 text-center">Completion</div>
-          <div className="col-span-2 text-right">Score</div>
-        </div>
-
-        {/* Rows */}
-        {MOCK_LEADERS.map((leader) => (
-          <div
-            key={leader.rank}
-            className={`
-              grid grid-cols-12 gap-2 items-center px-4 py-3 rounded-lg border transition-colors
-              ${getRankStyle(leader.rank)}
-              ${leader.rank <= 3 ? '' : 'hover:bg-neutral-800/70'}
-            `}
-          >
-            <div className="col-span-1 font-bold text-sm">
-              {getRankEmoji(leader.rank)}
-            </div>
-            <div className="col-span-3 min-w-0">
-              <div className="font-mono text-sm truncate">{leader.address}</div>
-              {leader.twitter && (
-                <div className="text-[10px] text-blue-400 mt-0.5">{leader.twitter}</div>
-              )}
-            </div>
-            <div className="col-span-2 text-center font-mono text-sm">
-              {leader.cards}
-            </div>
-            <div className="col-span-2 text-center">
-              <span className="font-mono text-sm text-yellow-400">{leader.legendaries}</span>
-              <span className="text-neutral-700 mx-1">/</span>
-              <span className="font-mono text-xs text-purple-400">{leader.epics}</span>
-            </div>
-            <div className="col-span-2 text-center">
-              <div className="flex items-center gap-2 justify-center">
-                <div className="w-16 h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+          {MOCK_LEADERS.map((leader) => (
+            <div
+              key={leader.rank}
+              className={`xp-listview-row grid grid-cols-12 gap-1 items-center ${
+                leader.rank <= 3 ? 'font-bold' : ''
+              }`}
+            >
+              <span className="col-span-1">{getRankIcon(leader.rank)}</span>
+              <div className="col-span-3">
+                <span className="font-mono text-[10px]">{leader.address}</span>
+                {leader.twitter && (
+                  <span className="text-[10px] text-[#0066cc] ml-1">{leader.twitter}</span>
+                )}
+              </div>
+              <span className="col-span-2 text-center">{leader.cards}</span>
+              <span className="col-span-2 text-center">
+                <span style={{ color: '#eab308' }}>{leader.legendaries}</span>
+                <span className="text-[#ccc] mx-0.5">/</span>
+                <span style={{ color: '#8b5cf6' }}>{leader.epics}</span>
+              </span>
+              <div className="col-span-2 text-center flex items-center gap-1 justify-center">
+                <div className="xp-progress h-[8px] w-14">
                   <div
-                    className="h-full bg-gradient-to-r from-green-500 to-emerald-400 rounded-full"
+                    className="xp-progress-bar h-full"
                     style={{ width: `${leader.completion}%` }}
                   />
                 </div>
-                <span className="font-mono text-xs text-neutral-400">{leader.completion}%</span>
+                <span className="text-[10px]">{leader.completion}%</span>
               </div>
+              <span className="col-span-2 text-right font-bold text-[#003399]">
+                {leader.score.toLocaleString()}
+              </span>
             </div>
-            <div className="col-span-2 text-right">
-              <span className="font-bold text-sm">{leader.score.toLocaleString()}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      {/* Empty state / Coming soon */}
-      <div className="text-center py-8 border border-dashed border-neutral-800 rounded-xl">
-        <span className="text-3xl mb-2 block">🏗️</span>
-        <p className="text-neutral-500 text-sm">
-          Live leaderboard coming soon. Data shown above is a preview.
-        </p>
-        <p className="text-neutral-600 text-xs mt-1">
-          Rankings will update in real-time as collectors open packs and trade cards.
-        </p>
-      </div>
+        {/* Coming soon notice */}
+        <div className="xp-infobar mt-4">
+          <span className="text-lg">🏗️</span>
+          <div>
+            <span className="font-bold">Preview Data</span> — Live leaderboard coming soon.
+            Rankings will update in real-time as collectors open packs and trade cards.
+          </div>
+        </div>
+      </XpWindow>
     </div>
   );
 }

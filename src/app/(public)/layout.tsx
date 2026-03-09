@@ -7,11 +7,11 @@ import { WalletButton } from '@/components/wallet-button';
 import { Toaster } from 'sonner';
 
 const NAV = [
-  { href: '/', label: 'Home', exact: true },
-  { href: '/shop', label: 'Shop' },
-  { href: '/collection', label: 'Collection' },
-  { href: '/gallery', label: 'Gallery' },
-  { href: '/leaderboard', label: 'Leaderboard' },
+  { href: '/', label: 'Home', icon: '🏠', exact: true },
+  { href: '/shop', label: 'Shop', icon: '🛒' },
+  { href: '/collection', label: 'Collection', icon: '🃏' },
+  { href: '/gallery', label: 'Gallery', icon: '🖼️' },
+  { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
 ];
 
 export default function PublicLayout({
@@ -23,107 +23,94 @@ export default function PublicLayout({
 
   return (
     <WalletProvider>
-      <div className="min-h-screen flex flex-col">
-        {/* ── WinXP-style title bar ── */}
-        <header className="border-b-2 border-blue-700 bg-gradient-to-r from-blue-800 via-blue-700 to-blue-600 sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 py-2 flex items-center justify-between">
-            {/* Logo */}
-            <Link href="/" className="flex items-center gap-2 group">
-              <span className="text-xl">🎴</span>
-              <span className="text-sm font-bold tracking-widest text-white group-hover:text-yellow-300 transition-colors">
-                SHAPE_CARDS
-              </span>
-              <span className="text-[10px] bg-yellow-500 text-black px-1.5 py-0.5 rounded font-bold ml-1">
-                BETA
-              </span>
-            </Link>
+      <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
+        {/* Main content area — windows sit on the "desktop" */}
+        <main className="flex-1 p-3 md:p-6">
+          {/* Navigation bar styled as XP toolbar window */}
+          <div className="xp-window mb-4">
+            <div className="xp-title-bar">
+              <div className="flex items-center gap-[6px]">
+                <span className="text-sm">🎴</span>
+                <span className="xp-title-text">SHAPE_CARDS — Collect. Trade. Battle.</span>
+              </div>
+              <div className="flex items-center gap-[2px]">
+                <button className="xp-btn-minimize" aria-label="Minimize">
+                  <svg width="8" height="2" viewBox="0 0 8 2"><rect width="8" height="2" fill="currentColor"/></svg>
+                </button>
+                <button className="xp-btn-maximize" aria-label="Maximize">
+                  <svg width="9" height="9" viewBox="0 0 9 9"><rect x="0" y="0" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+                </button>
+                <button className="xp-btn-close" aria-label="Close">
+                  <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
+                </button>
+              </div>
+            </div>
+            <div className="xp-toolbar justify-between flex-wrap gap-2">
+              <nav className="flex items-center gap-[2px]">
+                {NAV.map((item) => {
+                  const active = item.exact
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={`
+                        flex items-center gap-1 px-3 py-[3px] text-[11px] rounded-sm
+                        ${active
+                          ? 'bg-[#316ac5] text-white font-bold'
+                          : 'text-[#222] hover:bg-[#c8daf6]'
+                        }
+                      `}
+                    >
+                      <span className="text-xs">{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+              <WalletButton />
+            </div>
+          </div>
 
-            {/* Nav */}
-            <nav className="hidden md:flex items-center gap-0.5">
-              {NAV.map((item) => {
-                const active = item.exact
-                  ? pathname === item.href
-                  : pathname.startsWith(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`
-                      text-sm px-3 py-1.5 rounded transition-all font-medium
-                      ${active
-                        ? 'bg-white/20 text-white shadow-inner'
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
-                      }
-                    `}
-                  >
-                    {item.label}
-                  </Link>
-                );
+          {children}
+        </main>
+
+        {/* XP Taskbar */}
+        <div className="xp-taskbar">
+          <button className="xp-start-button">
+            <span className="text-base">🪟</span>
+            start
+          </button>
+          <div className="xp-taskbar-buttons">
+            <div className="xp-taskbar-btn xp-taskbar-btn-active">
+              <span className="text-xs">🎴</span>
+              <span className="truncate">SHAPE_CARDS</span>
+            </div>
+          </div>
+          <div className="xp-tray">
+            <span className="text-[10px]">🔊</span>
+            <span className="text-[11px]">
+              {new Date().toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true,
               })}
-            </nav>
-
-            {/* Wallet */}
-            <WalletButton />
+            </span>
           </div>
-        </header>
-
-        {/* ── VHS scan line overlay ── */}
-        <div
-          className="pointer-events-none fixed inset-0 z-40 opacity-[0.015]"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)',
-          }}
-        />
-
-        {/* Main content */}
-        <main className="flex-1">{children}</main>
-
-        {/* Footer */}
-        <footer className="border-t border-neutral-800 bg-neutral-900/50 py-6">
-          <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-lg">🎴</span>
-              <span className="text-xs font-bold tracking-widest text-neutral-500">
-                SHAPE_CARDS
-              </span>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-neutral-600">
-              <span>195 unique cards</span>
-              <span>&middot;</span>
-              <span>Solana blockchain</span>
-              <span>&middot;</span>
-              <span>VHS aesthetic</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://twitter.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 hover:text-white transition-colors text-sm"
-              >
-                Twitter
-              </a>
-              <a
-                href="https://discord.gg"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 hover:text-white transition-colors text-sm"
-              >
-                Discord
-              </a>
-            </div>
-          </div>
-        </footer>
+        </div>
 
         <Toaster
-          theme="dark"
+          theme="light"
           position="bottom-right"
           toastOptions={{
             style: {
-              background: '#1a1a1a',
-              border: '1px solid #333',
-              color: '#e5e5e5',
+              background: '#ffffe1',
+              border: '1px solid #000',
+              color: '#222',
+              fontFamily: 'Tahoma, sans-serif',
+              fontSize: '11px',
+              borderRadius: 0,
             },
           }}
         />

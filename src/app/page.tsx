@@ -2,289 +2,174 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-neutral-950 text-neutral-100 overflow-hidden relative">
-      {/* VHS scan lines */}
-      <div
-        className="pointer-events-none fixed inset-0 z-30 opacity-[0.02]"
-        style={{
-          backgroundImage:
-            'repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.05) 2px, rgba(255,255,255,0.05) 4px)',
-        }}
-      />
+    <div className="xp-desktop min-h-screen flex items-center justify-center p-4 md:p-8"
+      style={{ fontFamily: "'Tahoma', 'Segoe UI', sans-serif" }}>
 
-      {/* Hero */}
-      <section className="relative min-h-screen flex flex-col items-center justify-center px-4">
-        {/* Glowing background shapes */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-600/10 rounded-full blur-[128px]" />
-          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-[128px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-yellow-500/5 rounded-full blur-[96px]" />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 text-center max-w-3xl mx-auto space-y-8">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-blue-900/30 border border-blue-700/50 rounded-full px-4 py-1.5 text-sm">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-blue-300">Live on Solana Devnet</span>
+      {/* Main welcome window */}
+      <div className="xp-window w-full max-w-3xl">
+        {/* Title bar */}
+        <div className="xp-title-bar">
+          <div className="flex items-center gap-[6px]">
+            <span className="text-sm">🎴</span>
+            <span className="xp-title-text">Welcome to SHAPE_CARDS</span>
           </div>
-
-          {/* Title */}
-          <div className="space-y-4">
-            <h1 className="text-6xl sm:text-7xl md:text-8xl font-black tracking-tighter">
-              <span className="bg-gradient-to-r from-white via-neutral-200 to-neutral-400 bg-clip-text text-transparent">
-                SHAPE
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-yellow-400 via-amber-400 to-orange-400 bg-clip-text text-transparent">
-                CARDS
-              </span>
-            </h1>
-            <p className="text-lg sm:text-xl text-neutral-400 max-w-lg mx-auto leading-relaxed">
-              Collect 195 unique shape cards. Open booster packs with 3D animation.
-              Trade and battle on Solana.
-            </p>
-          </div>
-
-          {/* CTA */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link
-              href="/shop"
-              className="
-                group relative px-8 py-3 bg-gradient-to-r from-yellow-500 to-amber-500
-                text-black font-bold text-lg rounded-lg
-                hover:from-yellow-400 hover:to-amber-400
-                transition-all shadow-lg shadow-yellow-500/20
-                hover:shadow-yellow-400/30 hover:scale-105
-              "
-            >
-              <span className="relative z-10">Open Booster Pack</span>
-            </Link>
-            <Link
-              href="/collection"
-              className="
-                px-8 py-3 border border-neutral-700 text-neutral-300
-                font-medium text-lg rounded-lg
-                hover:bg-neutral-900 hover:text-white hover:border-neutral-600
-                transition-all
-              "
-            >
-              View Collection
-            </Link>
-          </div>
-
-          {/* Stats row */}
-          <div className="flex items-center justify-center gap-8 pt-8">
-            {[
-              { value: '195', label: 'Unique Cards' },
-              { value: '12', label: 'Shape Types' },
-              { value: '4', label: 'Rarities' },
-              { value: '6', label: 'Cards/Pack' },
-            ].map(({ value, label }) => (
-              <div key={label} className="text-center">
-                <div className="text-2xl sm:text-3xl font-bold text-white">
-                  {value}
-                </div>
-                <div className="text-xs text-neutral-500 mt-0.5">{label}</div>
-              </div>
-            ))}
+          <div className="flex items-center gap-[2px]">
+            <button className="xp-btn-minimize" aria-label="Minimize">
+              <svg width="8" height="2" viewBox="0 0 8 2"><rect width="8" height="2" fill="currentColor"/></svg>
+            </button>
+            <button className="xp-btn-maximize" aria-label="Maximize">
+              <svg width="9" height="9" viewBox="0 0 9 9"><rect x="0" y="0" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
+            </button>
+            <button className="xp-btn-close" aria-label="Close">
+              <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
+            </button>
           </div>
         </div>
 
-        {/* Floating cards preview */}
-        <div className="relative z-10 mt-16 flex items-center justify-center gap-4">
-          {[
-            { emoji: '⚪', rarity: 'common', name: 'Circle', color: 'neutral' },
-            { emoji: '💎', rarity: 'epic', name: 'Diamond', color: 'purple' },
-            { emoji: '⭐', rarity: 'legendary', name: 'Star', color: 'yellow' },
-            { emoji: '🔺', rarity: 'rare', name: 'Triangle', color: 'blue' },
-            { emoji: '❤️', rarity: 'epic', name: 'Heart', color: 'purple' },
-          ].map((card, i) => (
-            <div
-              key={card.name}
-              className={`
-                w-32 h-44 sm:w-40 sm:h-56 rounded-xl border-2 overflow-hidden
-                flex flex-col transition-transform hover:scale-110 hover:-translate-y-2
-                ${card.color === 'yellow'
-                  ? 'border-yellow-500 bg-gradient-to-b from-yellow-950 via-amber-950 to-neutral-900 shadow-[0_0_30px_rgba(234,179,8,0.2)]'
-                  : card.color === 'purple'
-                  ? 'border-purple-500 bg-gradient-to-b from-purple-950 to-neutral-900 shadow-[0_0_20px_rgba(168,85,247,0.15)]'
-                  : card.color === 'blue'
-                  ? 'border-blue-500 bg-gradient-to-b from-blue-950 to-neutral-900 shadow-[0_0_15px_rgba(59,130,246,0.15)]'
-                  : 'border-neutral-600 bg-gradient-to-b from-neutral-800 to-neutral-900'
-                }
-              `}
+        <div className="xp-window-content">
+          {/* Hero section — XP Welcome Screen style */}
+          <div className="flex flex-col md:flex-row gap-6">
+            {/* Left panel — blue sidebar like XP welcome */}
+            <div className="md:w-56 shrink-0 rounded-sm p-5 flex flex-col items-center text-center"
               style={{
-                transform: `rotate(${(i - 2) * 5}deg) translateY(${Math.abs(i - 2) * 12}px)`,
-              }}
-            >
-              <div className="flex-1 flex items-center justify-center">
-                <span className="text-4xl sm:text-5xl opacity-60">{card.emoji}</span>
+                background: 'linear-gradient(180deg, #1a5aaf 0%, #2b6cc4 30%, #3a80d8 100%)',
+                color: 'white',
+              }}>
+              <div className="text-5xl mb-3">🎴</div>
+              <div className="text-lg font-bold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>
+                SHAPE
               </div>
-              <div className="px-2 py-1.5 bg-black/30 text-center">
-                <div className="text-[10px] font-bold text-white/80">{card.name}</div>
-                <div className="text-[8px] text-neutral-500 uppercase tracking-wider">{card.rarity}</div>
+              <div className="text-2xl font-black tracking-wider" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>
+                CARDS
+              </div>
+              <div className="text-[10px] mt-2 opacity-80">
+                NFT Collection on Solana
+              </div>
+              <div className="mt-4 w-full border-t border-white/20 pt-3 space-y-1 text-[11px]">
+                <div className="flex justify-between"><span>Cards:</span><span className="font-bold">195</span></div>
+                <div className="flex justify-between"><span>Shapes:</span><span className="font-bold">13</span></div>
+                <div className="flex justify-between"><span>Rarities:</span><span className="font-bold">4</span></div>
+                <div className="flex justify-between"><span>Per Pack:</span><span className="font-bold">6</span></div>
               </div>
             </div>
-          ))}
-        </div>
 
-        {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
-          <span className="text-xs text-neutral-600">Scroll</span>
-          <span className="text-neutral-600">↓</span>
-        </div>
-      </section>
+            {/* Right panel — content */}
+            <div className="flex-1 space-y-5">
+              <div>
+                <h2 className="text-sm font-bold text-[#003399] mb-1">Welcome to SHAPE_CARDS</h2>
+                <p className="text-[11px] text-[#444] leading-relaxed">
+                  Collect 195 unique shape cards on the Solana blockchain. Open booster packs
+                  with a 3D animation, trade with other collectors, and enter MTG-style battles.
+                </p>
+              </div>
 
-      {/* How It Works */}
-      <section className="py-24 px-4 border-t border-neutral-800/50">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-black text-center mb-16 tracking-tight">
-            How It Works
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                step: '01',
-                title: 'Connect Wallet',
-                description: 'Link your Solana wallet (Phantom, Solflare). No account needed.',
-                icon: '👛',
-              },
-              {
-                step: '02',
-                title: 'Buy Booster Packs',
-                description: '6 random cards per pack. Guaranteed at least 1 Rare or better.',
-                icon: '📦',
-              },
-              {
-                step: '03',
-                title: 'Collect & Battle',
-                description: 'Build your collection. Trade with others. Enter MTG-style battles.',
-                icon: '⚔️',
-              },
-            ].map(({ step, title, description, icon }) => (
-              <div
-                key={step}
-                className="bg-neutral-900/50 border border-neutral-800 rounded-xl p-6 hover:border-neutral-700 transition-colors group"
-              >
-                <div className="flex items-center gap-3 mb-4">
-                  <span className="text-3xl">{icon}</span>
-                  <span className="text-xs font-mono text-neutral-600">{step}</span>
+              {/* How it works — XP wizard style */}
+              <fieldset className="xp-groupbox">
+                <legend className="xp-groupbox-legend">How It Works</legend>
+                <div className="space-y-2">
+                  {[
+                    { step: '1.', icon: '👛', title: 'Connect Wallet', desc: 'Link your Solana wallet (Phantom, Solflare)' },
+                    { step: '2.', icon: '📦', title: 'Buy Booster Packs', desc: '6 random cards per pack, 1 guaranteed Rare+' },
+                    { step: '3.', icon: '⚔️', title: 'Collect & Battle', desc: 'Build your set and enter card battles' },
+                  ].map(({ step, icon, title, desc }) => (
+                    <div key={step} className="flex items-start gap-2 text-[11px]">
+                      <span className="text-[#003399] font-bold w-4 shrink-0">{step}</span>
+                      <span className="text-base shrink-0">{icon}</span>
+                      <div>
+                        <span className="font-bold text-[#222]">{title}</span>
+                        <span className="text-[#666]"> — {desc}</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-lg font-bold mb-2 group-hover:text-yellow-400 transition-colors">
-                  {title}
-                </h3>
-                <p className="text-sm text-neutral-500 leading-relaxed">{description}</p>
+              </fieldset>
+
+              {/* Rarity tiers — XP list view */}
+              <fieldset className="xp-groupbox">
+                <legend className="xp-groupbox-legend">Rarity Tiers</legend>
+                <div className="xp-listview">
+                  <div className="xp-listview-header grid grid-cols-4">
+                    <span>Tier</span>
+                    <span>Material</span>
+                    <span>Drop Rate</span>
+                    <span>Quality</span>
+                  </div>
+                  {[
+                    { tier: 'Common', material: 'Flat', rate: '~58%', bar: 58, color: '#808080' },
+                    { tier: 'Rare', material: '3D', rate: '~14%', bar: 14, color: '#3b82f6' },
+                    { tier: 'Epic', material: 'Chrome', rate: '~3%', bar: 3, color: '#8b5cf6' },
+                    { tier: 'Legendary', material: 'Gold', rate: '~0.5%', bar: 0.5, color: '#eab308' },
+                  ].map(({ tier, material, rate, bar, color }) => (
+                    <div key={tier} className="xp-listview-row grid grid-cols-4 items-center">
+                      <span className="font-bold" style={{ color }}>{tier}</span>
+                      <span>{material}</span>
+                      <span>{rate}</span>
+                      <div className="xp-progress h-[10px]">
+                        <div
+                          className="h-full"
+                          style={{
+                            width: `${Math.max(2, bar)}%`,
+                            background: color,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </fieldset>
+
+              {/* Card fan preview */}
+              <div className="flex items-center justify-center gap-2 py-3">
+                {[
+                  { emoji: '⚪', name: 'Circle', border: '#808080' },
+                  { emoji: '💎', name: 'Diamond', border: '#8b5cf6' },
+                  { emoji: '⭐', name: 'Star', border: '#eab308' },
+                  { emoji: '🔺', name: 'Triangle', border: '#3b82f6' },
+                  { emoji: '❤️', name: 'Heart', border: '#8b5cf6' },
+                ].map((card, i) => (
+                  <div
+                    key={card.name}
+                    className="w-14 h-20 rounded-sm border-2 bg-white flex flex-col items-center justify-center shadow-sm"
+                    style={{
+                      borderColor: card.border,
+                      transform: `rotate(${(i - 2) * 8}deg) translateY(${Math.abs(i - 2) * 6}px)`,
+                    }}
+                  >
+                    <span className="text-xl">{card.emoji}</span>
+                    <span className="text-[8px] text-[#666] mt-0.5">{card.name}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      {/* Rarity Tiers */}
-      <section className="py-24 px-4 border-t border-neutral-800/50 bg-neutral-900/20">
-        <div className="max-w-5xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-black text-center mb-4 tracking-tight">
-            Rarity Tiers
-          </h2>
-          <p className="text-center text-neutral-500 mb-12 text-sm">
-            Material determines rarity. Rarer cards have better stats and unique abilities.
-          </p>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {[
-              {
-                tier: 'Common',
-                material: 'Flat',
-                chance: '~58%',
-                border: 'border-neutral-600',
-                bg: 'from-neutral-800 to-neutral-900',
-                text: 'text-neutral-300',
-              },
-              {
-                tier: 'Rare',
-                material: '3D',
-                chance: '~14%',
-                border: 'border-blue-500',
-                bg: 'from-blue-950 to-neutral-900',
-                text: 'text-blue-400',
-              },
-              {
-                tier: 'Epic',
-                material: 'Chrome',
-                chance: '~3%',
-                border: 'border-purple-500',
-                bg: 'from-purple-950 to-neutral-900',
-                text: 'text-purple-400',
-              },
-              {
-                tier: 'Legendary',
-                material: 'Gold',
-                chance: '~0.5%',
-                border: 'border-yellow-500',
-                bg: 'from-yellow-950 to-neutral-900',
-                text: 'text-yellow-400',
-              },
-            ].map(({ tier, material, chance, border, bg, text }) => (
-              <div
-                key={tier}
-                className={`${border} border-2 bg-gradient-to-b ${bg} rounded-xl p-5 text-center hover:scale-105 transition-transform`}
-              >
-                <div className={`text-2xl font-black ${text}`}>{tier}</div>
-                <div className="text-xs text-neutral-500 mt-1 uppercase tracking-wider">{material}</div>
-                <div className="text-sm font-mono text-neutral-400 mt-3">{chance}</div>
-                <div className="text-[10px] text-neutral-600">drop rate</div>
+              {/* CTA buttons */}
+              <div className="flex items-center gap-2 pt-2">
+                <Link href="/shop">
+                  <button className="xp-button xp-button-primary px-6 py-[5px] text-[12px] font-bold">
+                    🛒 Open Shop
+                  </button>
+                </Link>
+                <Link href="/gallery">
+                  <button className="xp-button px-4 py-[5px] text-[12px]">
+                    🖼️ Browse Cards
+                  </button>
+                </Link>
+                <Link href="/collection">
+                  <button className="xp-button px-4 py-[5px] text-[12px]">
+                    🃏 My Collection
+                  </button>
+                </Link>
               </div>
-            ))}
+            </div>
           </div>
         </div>
-      </section>
 
-      {/* CTA */}
-      <section className="py-24 px-4 border-t border-neutral-800/50">
-        <div className="max-w-2xl mx-auto text-center space-y-6">
-          <h2 className="text-3xl sm:text-4xl font-black tracking-tight">
-            Ready to collect?
-          </h2>
-          <p className="text-neutral-500">
-            Open your first booster pack and start building your collection.
-          </p>
-          <Link
-            href="/shop"
-            className="
-              inline-block px-10 py-4 bg-gradient-to-r from-yellow-500 to-amber-500
-              text-black font-bold text-lg rounded-lg
-              hover:from-yellow-400 hover:to-amber-400
-              transition-all shadow-lg shadow-yellow-500/20
-              hover:shadow-yellow-400/30 hover:scale-105
-            "
-          >
-            Enter the Shop
-          </Link>
+        {/* Status bar */}
+        <div className="xp-status-bar">
+          <div>Live on Solana Devnet</div>
+          <div>195 unique cards</div>
+          <div className="flex-1 text-right">SHAPE_CARDS v1.0</div>
         </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="border-t border-neutral-800 bg-neutral-900/50 py-6">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🎴</span>
-            <span className="text-xs font-bold tracking-widest text-neutral-500">
-              SHAPE_CARDS
-            </span>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-neutral-600">
-            <span>195 unique cards</span>
-            <span>&middot;</span>
-            <span>Solana blockchain</span>
-            <span>&middot;</span>
-            <span>VHS aesthetic</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <a href="https://twitter.com" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-white transition-colors text-sm">Twitter</a>
-            <a href="https://discord.gg" target="_blank" rel="noopener noreferrer" className="text-neutral-500 hover:text-white transition-colors text-sm">Discord</a>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   );
 }

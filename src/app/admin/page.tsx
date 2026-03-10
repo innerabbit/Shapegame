@@ -1,13 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { generateAllCards } from '@/lib/cards/generate-seed';
-import type { SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
 import {
   RARITY_LABELS,
   RARITY_COLORS,
@@ -16,28 +15,9 @@ import {
 } from '@/lib/constants';
 
 export default function AdminDashboard() {
-  const [cards, setCards] = useState<SeedCard[]>([]);
-  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'disconnected'>('checking');
-
-  useEffect(() => {
-    const allCards = generateAllCards();
-    setCards(allCards);
-
-    // Check Supabase connection
-    fetch('/api/cards?wave=1')
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error('Not connected');
-      })
-      .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setDbStatus('connected');
-        } else {
-          setDbStatus('disconnected');
-        }
-      })
-      .catch(() => setDbStatus('disconnected'));
-  }, []);
+  const { cards, loading, source, refetch } = useCards();
+  const [seeding, setSeeding] = useState(false);
+  const [seedResult, setSeedResult] = useState<string | null>(null);
 
   const totalCards = cards.length;
 
@@ -57,6 +37,26 @@ export default function AdminDashboard() {
   const approvedCount = (byStatus['approved'] || 0) + (byStatus['compositing'] || 0) + (byStatus['finalized'] || 0);
   const finalizedCount = byStatus['finalized'] || 0;
 
+  // ── Seed database ─────────────────────────────────
+  const handleSeed = async () => {
+    setSeeding(true);
+    setSeedResult(null);
+    try {
+      const res = await fetch('/api/cards/seed', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        setSeedResult(`✅ Seeded ${data.inserted} cards`);
+        refetch();
+      } else {
+        setSeedResult(`⚠️ ${data.error}`);
+      }
+    } catch (e) {
+      setSeedResult(`❌ Network error`);
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between">
@@ -66,17 +66,19 @@ export default function AdminDashboard() {
             Overview of the generation pipeline — {totalCards} cards total
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <div className={`w-2 h-2 rounded-full ${
-            dbStatus === 'connected' ? 'bg-green-500' :
-            dbStatus === 'checking' ? 'bg-yellow-500 animate-pulse' :
-            'bg-neutral-600'
-          }`} />
-          <span className="text-xs text-neutral-500">
-            {dbStatus === 'connected' ? 'Supabase connected' :
-             dbStatus === 'checking' ? 'Checking...' :
-             'Using local data'}
-          </span>
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className={`w-2 h-2 rounded-full ${
+              source === 'api' ? 'bg-green-500' :
+              loading ? 'bg-yellow-500 animate-pulse' :
+              'bg-neutral-600'
+            }`} />
+            <span className="text-xs text-neutral-500">
+              {loading ? 'Loading...' :
+               source === 'api' ? 'Supabase connected' :
+               'Using local data'}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -97,6 +99,22 @@ export default function AdminDashboard() {
             3D Booster Preview
           </Button>
         </Link>
+
+        <div className="ml-auto flex items-center gap-2">
+          {source === 'local' && (
+            <Button
+              variant="outline"
+              className="bg-blue-900/30 border-blue-700 text-blue-300 hover:bg-blue-900/50"
+              onClick={handleSeed}
+              disabled={seeding}
+            >
+              {seeding ? 'Seeding...' : '🌱 Seed Database'}
+            </Button>
+          )}
+          {seedResult && (
+            <span className="text-xs text-neutral-400">{seedResult}</span>
+          )}
+        </div>
       </div>
 
       {/* Pipeline Progress */}

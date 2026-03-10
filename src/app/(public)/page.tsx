@@ -2,9 +2,7 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <div className="xp-desktop min-h-screen flex items-center justify-center p-4 md:p-8"
-      style={{ fontFamily: "'Tahoma', 'Segoe UI', sans-serif" }}>
-
+    <div className="flex items-center justify-center">
       {/* Main welcome window */}
       <div className="xp-window w-full max-w-3xl">
         {/* Title bar */}

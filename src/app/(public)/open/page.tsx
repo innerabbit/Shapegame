@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { generateBoosterPack } from '@/lib/cards/generate-pack';
+import { fetchBoosterPack } from '@/lib/cards/fetch-pack';
 import type { BoosterStage, PackCard } from '@/components/three/booster-scene';
 import type { RarityTier } from '@/types/cards';
 import { MANA_COLORS, RARITY_LABELS } from '@/lib/constants';
@@ -167,16 +167,19 @@ function PackSummary({ cards, onNewPack, onClose }: {
 export default function OpenBoosterPage() {
   const router = useRouter();
   const [SceneComponent, setSceneComponent] = useState<React.ComponentType<any> | null>(null);
-  const [packCards, setPackCards] = useState<PackCard[]>(() => generateBoosterPack());
+  const [packCards, setPackCards] = useState<PackCard[]>([]);
   const [stage, setStage] = useState<BoosterStage>('idle');
   const [revealedCount, setRevealedCount] = useState(0);
   const [lastRevealed, setLastRevealed] = useState<PackCard | null>(null);
   const [showSummary, setShowSummary] = useState(false);
 
+  // Load 3D scene component + fetch pack data
   useEffect(() => {
     import('@/components/three/booster-scene')
       .then(mod => setSceneComponent(() => mod.BoosterScene))
       .catch(err => console.error('Failed to load 3D scene:', err));
+
+    fetchBoosterPack().then(result => setPackCards(result.cards));
   }, []);
 
   const handleStageChange = useCallback((newStage: BoosterStage) => {
@@ -192,11 +195,13 @@ export default function OpenBoosterPage() {
   const handleComplete = useCallback(() => setShowSummary(true), []);
 
   const handleNewPack = useCallback(() => {
-    setPackCards(generateBoosterPack());
-    setStage('idle');
-    setRevealedCount(0);
-    setLastRevealed(null);
-    setShowSummary(false);
+    fetchBoosterPack().then(result => {
+      setPackCards(result.cards);
+      setStage('idle');
+      setRevealedCount(0);
+      setLastRevealed(null);
+      setShowSummary(false);
+    });
   }, []);
 
   const handleClose = useCallback(() => router.back(), [router]);

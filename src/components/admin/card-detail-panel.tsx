@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import type { SeedCard } from '@/lib/cards/generate-seed';
+import type { Card } from '@/types/cards';
 import {
   SHAPES,
   MANA_COLORS,
@@ -18,7 +18,7 @@ import {
 } from '@/lib/constants';
 
 interface CardDetailPanelProps {
-  card: SeedCard;
+  card: Card;
   onApprove: () => void;
   onReject: () => void;
 }
@@ -36,18 +36,30 @@ const QUALITY_CHECKLIST = [
   'No transparent background (opaque)',
 ];
 
+function getArtDisplayUrl(rawArtPath: string): string {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!supabaseUrl) return '';
+  const fileName = rawArtPath.replace(/^raw-arts\//, '');
+  return `${supabaseUrl}/storage/v1/object/public/raw-arts/${fileName}`;
+}
+
 export function CardDetailPanel({ card, onApprove, onReject }: CardDetailPanelProps) {
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(
+    card.raw_art_path ? getArtDisplayUrl(card.raw_art_path) : null
+  );
   const [checklist, setChecklist] = useState<boolean[]>(
     new Array(QUALITY_CHECKLIST.length).fill(false)
   );
+  const [uploading, setUploading] = useState(false);
 
   const shapeDef = SHAPES.find((s) => s.shape === card.shape);
   const mana = MANA_COLORS[card.mana_color];
   const rarityColors = RARITY_COLORS[card.rarity_tier];
   const statusInfo = GEN_STATUS_LABELS[card.gen_status];
   const ability = ABILITIES.find((a) => a.name === card.ability);
+
+  const isLocal = card.id.startsWith('local-');
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
@@ -63,6 +75,39 @@ export function CardDetailPanel({ card, onApprove, onReject }: CardDetailPanelPr
     maxFiles: 1,
     maxSize: 20 * 1024 * 1024, // 20MB
   });
+
+  // Upload art to Supabase Storage via API, then approve
+  const handleUploadAndApprove = useCallback(async () => {
+    if (isLocal) {
+      onApprove();
+      return;
+    }
+
+    if (uploadedFile) {
+      setUploading(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', uploadedFile);
+        formData.append('cardId', card.id);
+        formData.append('cardNumber', String(card.card_number));
+        formData.append('shape', card.shape);
+        formData.append('material', card.material);
+        formData.append('background', card.background);
+
+        const res = await fetch('/api/upload/raw-art', { method: 'POST', body: formData });
+        if (!res.ok) {
+          const data = await res.json();
+          console.error('[Upload] Failed:', data.error);
+        }
+      } catch (e) {
+        console.error('[Upload] Network error:', e);
+      } finally {
+        setUploading(false);
+      }
+    }
+
+    onApprove();
+  }, [uploadedFile, card, isLocal, onApprove]);
 
   const allChecked = checklist.every(Boolean);
   const checkedCount = checklist.filter(Boolean).length;
@@ -175,7 +220,10 @@ export function CardDetailPanel({ card, onApprove, onReject }: CardDetailPanelPr
                   className="w-full aspect-square object-cover rounded-md"
                 />
                 <p className="text-xs text-neutral-400">
-                  {uploadedFile?.name} ({(uploadedFile!.size / 1024 / 1024).toFixed(1)} MB)
+                  {uploadedFile
+                    ? `${uploadedFile.name} (${(uploadedFile.size / 1024 / 1024).toFixed(1)} MB)`
+                    : 'Current art from storage'
+                  }
                 </p>
                 <p className="text-xs text-neutral-500">Click or drag to replace</p>
               </div>
@@ -228,10 +276,10 @@ export function CardDetailPanel({ card, onApprove, onReject }: CardDetailPanelPr
       <div className="pt-4 border-t border-neutral-800 flex gap-2 mt-auto">
         <Button
           className="flex-1 bg-green-700 hover:bg-green-600 text-white"
-          disabled={!previewUrl || !allChecked}
-          onClick={onApprove}
+          disabled={!previewUrl || !allChecked || uploading}
+          onClick={handleUploadAndApprove}
         >
-          ✓ Approve
+          {uploading ? 'Uploading...' : '✓ Approve'}
         </Button>
         <Button
           variant="outline"

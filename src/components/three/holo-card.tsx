@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Text, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
@@ -73,8 +73,6 @@ export function HoloCard({
   revealed = false, index = 0, onClick, animate = false,
 }: HoloCardProps) {
   const groupRef = useRef<THREE.Group>(null);
-  const meshRef = useRef<THREE.Mesh>(null);
-  const holoMatRef = useRef<THREE.ShaderMaterial & { uTime: number; uHoloIntensity: number } | null>(null);
   const [hovered, setHovered] = useState(false);
 
   // Animation state
@@ -96,23 +94,20 @@ export function HoloCard({
     }
   }, [card.material]);
 
-  // Create and attach holo material imperatively
-  useEffect(() => {
-    if (!meshRef.current) return;
-    const mat = new HoloMaterialImpl({
-      uTime: 0,
-      uHoloIntensity: 0,
-      uBaseColor: baseColor,
-      uFresnelPower: holoConfig.fresnelPower,
-      uRainbowSpeed: holoConfig.rainbowSpeed,
-      uRainbowScale: 1.5,
-      uMetalness: holoConfig.metalness,
-      uRoughness: holoConfig.roughness,
-    });
-    meshRef.current.material = mat;
-    holoMatRef.current = mat as any;
-    return () => { mat.dispose(); };
-  }, [baseColor, holoConfig]);
+  // Holographic material — created via useMemo, attached via <primitive>
+  const holoMat = useMemo(() => {
+    const mat = new HoloMaterialImpl();
+    mat.uniforms.uTime.value = 0;
+    mat.uniforms.uHoloIntensity.value = 0;
+    mat.uniforms.uBaseColor.value = baseColor;
+    mat.uniforms.uFresnelPower.value = holoConfig.fresnelPower;
+    mat.uniforms.uRainbowSpeed.value = holoConfig.rainbowSpeed;
+    mat.uniforms.uRainbowScale.value = 1.5;
+    mat.uniforms.uMetalness.value = holoConfig.metalness;
+    mat.uniforms.uRoughness.value = holoConfig.roughness;
+    return mat;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [card.rarity_tier, card.material]);
 
   useFrame((state, delta) => {
     if (!groupRef.current) return;
@@ -144,14 +139,11 @@ export function HoloCard({
     groupRef.current.scale.lerp(new THREE.Vector3(targetScale, targetScale, targetScale), 0.1);
 
     // ── Update holo shader ──
-    if (holoMatRef.current) {
-      holoMatRef.current.uTime = t;
-      // Animate holo intensity on reveal
-      const targetIntensity = revealed ? holoConfig.holoIntensity + (hovered ? 0.2 : 0) : 0;
-      holoMatRef.current.uHoloIntensity = THREE.MathUtils.lerp(
-        holoMatRef.current.uHoloIntensity, targetIntensity, 0.05
-      );
-    }
+    holoMat.uniforms.uTime.value = t;
+    const targetIntensity = revealed ? holoConfig.holoIntensity + (hovered ? 0.2 : 0) : 0;
+    holoMat.uniforms.uHoloIntensity.value = THREE.MathUtils.lerp(
+      holoMat.uniforms.uHoloIntensity.value, targetIntensity, 0.05
+    );
   });
 
   return (
@@ -164,10 +156,9 @@ export function HoloCard({
       onPointerOver={(e) => { e.stopPropagation(); setHovered(true); document.body.style.cursor = 'pointer'; }}
       onPointerOut={() => { setHovered(false); document.body.style.cursor = 'default'; }}
     >
-      {/* ── Card body with holo material (attached via ref) ── */}
-      <RoundedBox ref={meshRef} args={[1.4, 2.0, 0.03]} radius={0.05} smoothness={4}>
-        {/* Material is attached imperatively via useEffect */}
-        <meshBasicMaterial visible={false} />
+      {/* ── Card body with holo material ── */}
+      <RoundedBox args={[1.4, 2.0, 0.03]} radius={0.05} smoothness={4}>
+        <primitive object={holoMat} attach="material" />
       </RoundedBox>
 
       {/* ── Rarity border glow ── */}

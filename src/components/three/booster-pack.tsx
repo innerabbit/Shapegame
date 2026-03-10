@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { RoundedBox, Text } from '@react-three/drei';
 import * as THREE from 'three';
@@ -32,25 +32,20 @@ function easeInQuad(t: number): number {
   return t * t;
 }
 
-// ── Holographic pack material hook ────────────────────────────
+// ── Create holographic pack material ────────────────────────────
 
-function useHoloPackMaterial(meshRef: React.RefObject<THREE.Mesh | null>, matRef: React.MutableRefObject<any>) {
-  useEffect(() => {
-    if (!meshRef.current) return;
-    const mat = new HoloMaterialImpl({
-      uTime: 0,
-      uHoloIntensity: 0.7,
-      uBaseColor: new THREE.Color('#0a0318'),
-      uFresnelPower: 2.5,
-      uRainbowSpeed: 0.3,
-      uRainbowScale: 1.2,
-      uMetalness: 0.8,
-      uRoughness: 0.15,
-    });
-    meshRef.current.material = mat;
-    matRef.current = mat;
-    return () => { mat.dispose(); };
-  }, [meshRef, matRef]);
+function createHoloPackMat() {
+  const mat = new HoloMaterialImpl();
+  // Set uniforms after construction (Three.js v0.183+ rejects custom props in constructor)
+  mat.uniforms.uTime.value = 0;
+  mat.uniforms.uHoloIntensity.value = 0.7;
+  mat.uniforms.uBaseColor.value = new THREE.Color('#0a0318');
+  mat.uniforms.uFresnelPower.value = 2.5;
+  mat.uniforms.uRainbowSpeed.value = 0.3;
+  mat.uniforms.uRainbowScale.value = 1.2;
+  mat.uniforms.uMetalness.value = 0.8;
+  mat.uniforms.uRoughness.value = 0.15;
+  return mat;
 }
 
 // ── Pack Component ─────────────────────────────────────────────
@@ -60,10 +55,10 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
   const flapRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const lightRef = useRef<THREE.PointLight>(null);
-  const bodyMeshRef = useRef<THREE.Mesh>(null);
-  const flapMeshRef = useRef<THREE.Mesh>(null);
-  const bodyMatRef = useRef<any>(null);
-  const flapMatRef = useRef<any>(null);
+
+  // Holographic materials — created once via useMemo, attached via <primitive>
+  const bodyMat = useMemo(() => createHoloPackMat(), []);
+  const flapMat = useMemo(() => createHoloPackMat(), []);
 
   // Animation progress trackers
   const enterProgress = useRef(0);
@@ -73,27 +68,18 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
   const [tearDone, setTearDone] = useState(false);
   const [hovered, setHovered] = useState(false);
 
-  // Apply holographic material to body and flap
-  useHoloPackMaterial(bodyMeshRef, bodyMatRef);
-  useHoloPackMaterial(flapMeshRef, flapMatRef);
-
   useFrame((frameState, delta) => {
     if (!groupRef.current) return;
     const t = frameState.clock.elapsedTime;
 
-    // Update shader time
-    if (bodyMatRef.current) {
-      bodyMatRef.current.uTime = t;
-      // Intensify holo on hover
-      const targetIntensity = hovered && state === 'idle' ? 0.9 : 0.7;
-      bodyMatRef.current.uHoloIntensity = THREE.MathUtils.lerp(
-        bodyMatRef.current.uHoloIntensity, targetIntensity, 0.05
-      );
-    }
-    if (flapMatRef.current) {
-      flapMatRef.current.uTime = t;
-      flapMatRef.current.uHoloIntensity = bodyMatRef.current?.uHoloIntensity ?? 0.7;
-    }
+    // Update shader uniforms
+    bodyMat.uniforms.uTime.value = t;
+    const targetIntensity = hovered && state === 'idle' ? 0.9 : 0.7;
+    bodyMat.uniforms.uHoloIntensity.value = THREE.MathUtils.lerp(
+      bodyMat.uniforms.uHoloIntensity.value, targetIntensity, 0.05
+    );
+    flapMat.uniforms.uTime.value = t;
+    flapMat.uniforms.uHoloIntensity.value = bodyMat.uniforms.uHoloIntensity.value;
 
     // ── Enter animation: fly in from top-right ──
     if (state === 'entering') {
@@ -183,8 +169,8 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
     >
       {/* ── Pack body (holographic material) ── */}
       <group>
-        <RoundedBox ref={bodyMeshRef} args={[1.8, 2.6, 0.35]} radius={0.06} smoothness={4} position={[0, -0.2, 0]}>
-          <meshBasicMaterial visible={false} />
+        <RoundedBox args={[1.8, 2.6, 0.35]} radius={0.06} smoothness={4} position={[0, -0.2, 0]}>
+          <primitive object={bodyMat} attach="material" />
         </RoundedBox>
 
         {/* Pack face decoration */}
@@ -250,8 +236,8 @@ export function BoosterPack({ state, onClick, onTearComplete }: BoosterPackProps
       {/* ── Flap (top, tears off — also holographic) ── */}
       <group position={[0, 1.1, 0]}>
         <group ref={flapRef}>
-          <RoundedBox ref={flapMeshRef} args={[1.8, 0.7, 0.35]} radius={0.06} smoothness={4} position={[0, 0.35, 0]}>
-            <meshBasicMaterial visible={false} />
+          <RoundedBox args={[1.8, 0.7, 0.35]} radius={0.06} smoothness={4} position={[0, 0.35, 0]}>
+            <primitive object={flapMat} attach="material" />
           </RoundedBox>
           <mesh position={[0, 0, 0.18]}>
             <planeGeometry args={[1.6, 0.02]} />

@@ -11,7 +11,7 @@ const NAV = [
   { href: '/shop', label: 'Shop', icon: '🛒' },
   { href: '/collection', label: 'Collection', icon: '🃏' },
   { href: '/gallery', label: 'Gallery', icon: '🖼️' },
-  { href: '/leaderboard', label: 'Leaderboard', icon: '🏆' },
+  { href: '/leaderboard', label: 'Board', icon: '🏆' },
 ];
 
 export default function PublicLayout({
@@ -23,58 +23,40 @@ export default function PublicLayout({
 
   return (
     <WalletProvider>
-      <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
-        {/* Main content area — windows sit on the "desktop" */}
-        <main className="flex-1 p-3 md:p-6">
-          {/* Navigation bar styled as XP toolbar window */}
-          <div className="xp-window mb-4">
-            <div className="xp-title-bar">
-              <div className="flex items-center gap-[6px]">
-                <span className="text-sm">🎴</span>
-                <span className="xp-title-text">SHAPE_CARDS — Collect. Trade. Battle.</span>
-              </div>
-              <div className="flex items-center gap-[2px]">
-                <button className="xp-btn-minimize" aria-label="Minimize">
-                  <svg width="8" height="2" viewBox="0 0 8 2"><rect width="8" height="2" fill="currentColor"/></svg>
-                </button>
-                <button className="xp-btn-maximize" aria-label="Maximize">
-                  <svg width="9" height="9" viewBox="0 0 9 9"><rect x="0" y="0" width="9" height="9" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
-                </button>
-                <button className="xp-btn-close" aria-label="Close">
-                  <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
-                </button>
-              </div>
-            </div>
-            <div className="xp-toolbar justify-between flex-wrap gap-2">
-              <nav className="flex items-center gap-[2px]">
-                {NAV.map((item) => {
-                  const active = item.exact
-                    ? pathname === item.href
-                    : pathname.startsWith(item.href);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`
-                        flex items-center gap-1 px-3 py-[3px] text-[11px] rounded-sm
-                        ${active
-                          ? 'bg-[#316ac5] text-white font-bold'
-                          : 'text-[#222] hover:bg-[#c8daf6]'
-                        }
-                      `}
-                    >
-                      <span className="text-xs">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  );
-                })}
-              </nav>
-              <WalletButton />
-            </div>
+      {/* Bottom nav (48) + taskbar (36) = 84px reserved */}
+      <div className="xp-desktop flex flex-col" style={{ paddingBottom: 84 }}>
+        {/* Title bar — fixed at top */}
+        <div className="xp-top-bar">
+          <div className="flex items-center gap-[6px]">
+            <span className="text-sm">🎴</span>
+            <span className="xp-title-text">SHAPE_CARDS</span>
           </div>
+          <WalletButton />
+        </div>
 
+        {/* Main content */}
+        <main className="flex-1 p-3 md:p-6 pt-1">
           {children}
         </main>
+
+        {/* Bottom tab navigation */}
+        <nav className="xp-bottom-tabs">
+          {NAV.map((item) => {
+            const active = item.exact
+              ? pathname === item.href
+              : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`xp-bottom-tab ${active ? 'xp-bottom-tab-active' : ''}`}
+              >
+                <span className="text-base leading-none">{item.icon}</span>
+                <span className="text-[10px]">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
 
         {/* XP Taskbar */}
         <div className="xp-taskbar">

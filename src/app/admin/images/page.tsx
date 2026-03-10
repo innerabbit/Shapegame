@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -38,7 +38,8 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 
-import { generateAllCards, type SeedCard } from '@/lib/cards/generate-seed';
+import { useCards } from '@/lib/hooks/use-cards';
+import type { Card } from '@/types/cards';
 import {
   GEN_STATUS_LABELS,
   RARITY_COLORS,
@@ -50,7 +51,7 @@ import { CardDetailPanel } from '@/components/admin/card-detail-panel';
 
 // ── Column definitions ─────────────────────────────────
 
-const columns: ColumnDef<SeedCard>[] = [
+const columns: ColumnDef<Card>[] = [
   {
     id: 'select',
     header: ({ table }) => (
@@ -172,37 +173,68 @@ const columns: ColumnDef<SeedCard>[] = [
 // ── Main page component ────────────────────────────────
 
 export default function ImagesPage() {
-  const [cards, setCards] = useState<SeedCard[]>([]);
+  const { cards, source, refetch } = useCards();
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [rowSelection, setRowSelection] = useState({});
-  const [selectedCard, setSelectedCard] = useState<SeedCard | null>(null);
+  const [selectedCard, setSelectedCard] = useState<Card | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
 
-  useEffect(() => {
-    const allCards = generateAllCards();
-    setCards(allCards);
-  }, []);
+  const isLocal = source === 'local';
 
-  // Update a single card's status
-  const updateCardStatus = useCallback((cardNumber: number, newStatus: string) => {
-    setCards((prev) =>
-      prev.map((c) =>
-        c.card_number === cardNumber ? { ...c, gen_status: newStatus } : c
-      )
-    );
-  }, []);
+  // Update a single card's status via API
+  const updateCardStatus = useCallback(async (cardId: string, newStatus: string) => {
+    if (cardId.startsWith('local-')) {
+      toast.error('Cannot update status — database not connected');
+      return;
+    }
+    try {
+      const res = await fetch(`/api/cards/${cardId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gen_status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || 'Failed to update status');
+        return;
+      }
+      refetch();
+    } catch {
+      toast.error('Network error updating status');
+    }
+  }, [refetch]);
 
-  // Batch update cards by row indices
-  const batchUpdateStatus = useCallback((rowIndices: string[], newStatus: string) => {
-    const indices = new Set(rowIndices.map(Number));
-    setCards((prev) =>
-      prev.map((c, i) =>
-        indices.has(i) ? { ...c, gen_status: newStatus } : c
-      )
-    );
-    setRowSelection({});
-  }, []);
+  // Batch update cards via API
+  const batchUpdateStatus = useCallback(async (rowIndices: string[], newStatus: string) => {
+    // Map row indices to card IDs
+    const cardIds = rowIndices
+      .map(Number)
+      .map(i => cards[i]?.id)
+      .filter(Boolean);
+
+    if (cardIds.some(id => id.startsWith('local-'))) {
+      toast.error('Cannot batch update — database not connected');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/cards/batch', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: cardIds, gen_status: newStatus }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        toast.error(data.error || 'Batch update failed');
+        return;
+      }
+      setRowSelection({});
+      refetch();
+    } catch {
+      toast.error('Network error during batch update');
+    }
+  }, [cards, refetch]);
 
   // Navigate to next card in the table
   const navigateCard = useCallback((direction: 'prev' | 'next') => {
@@ -249,6 +281,9 @@ export default function ImagesPage() {
           <h2 className="text-2xl font-bold tracking-tight">Stage 1: Images</h2>
           <p className="text-neutral-400 text-sm mt-1">
             Upload and curate raw arts for {cards.length} cards
+            {isLocal && (
+              <span className="text-yellow-500 ml-2">(local data — seed DB first)</span>
+            )}
           </p>
         </div>
         <div className="text-right space-y-1">
@@ -341,6 +376,7 @@ export default function ImagesPage() {
               size="sm"
               variant="outline"
               className="bg-green-900/50 border-green-700 text-green-300 hover:bg-green-900"
+              disabled={isLocal}
               onClick={() => {
                 batchUpdateStatus(Object.keys(rowSelection), 'approved');
                 toast.success(`${selectedCount} cards approved`);
@@ -352,6 +388,7 @@ export default function ImagesPage() {
               size="sm"
               variant="outline"
               className="bg-red-900/50 border-red-700 text-red-300 hover:bg-red-900"
+              disabled={isLocal}
               onClick={() => {
                 batchUpdateStatus(Object.keys(rowSelection), 'rejected');
                 toast.error(`${selectedCount} cards rejected`);
@@ -383,8 +420,8 @@ export default function ImagesPage() {
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           {flexRender(header.column.columnDef.header, header.getContext())}
-                          {header.column.getIsSorted() === 'asc' && ' \u2191'}
-                          {header.column.getIsSorted() === 'desc' && ' \u2193'}
+                          {header.column.getIsSorted() === 'asc' && ' ↑'}
+                          {header.column.getIsSorted() === 'desc' && ' ↓'}
                         </button>
                       )}
                   </TableHead>
@@ -460,16 +497,15 @@ export default function ImagesPage() {
             <CardDetailPanel
               card={selectedCard}
               onApprove={() => {
-                updateCardStatus(selectedCard.card_number, 'approved');
+                updateCardStatus(selectedCard.id, 'approved');
                 toast.success(
                   `Card #${String(selectedCard.card_number).padStart(3, '0')} approved`,
                   { description: `${selectedCard.shape} / ${selectedCard.material} / ${selectedCard.background}` }
                 );
-                // Auto-navigate to next card
                 navigateCard('next');
               }}
               onReject={() => {
-                updateCardStatus(selectedCard.card_number, 'rejected');
+                updateCardStatus(selectedCard.id, 'rejected');
                 toast.error(
                   `Card #${String(selectedCard.card_number).padStart(3, '0')} rejected`,
                   { description: `${selectedCard.shape} / ${selectedCard.material} / ${selectedCard.background}` }

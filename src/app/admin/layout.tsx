@@ -6,6 +6,7 @@ import { Toaster } from 'sonner';
 
 const NAV_ITEMS = [
   { href: '/admin', label: 'Dashboard', exact: true },
+  { href: '/admin/generate', label: '🎨 Generate' },
   { href: '/admin/images', label: '1. Images' },
   { href: '/admin/cards', label: '2. Cards' },
   { href: '/admin/promo', label: '3. Promo' },

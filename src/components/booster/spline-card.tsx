@@ -315,9 +315,11 @@ export const SplineCard = forwardRef<SplineCardHandle, SplineCardProps>(
           requestAnimationFrame(() => {
             const container = canvas.parentElement;
             if (container && canvas.clientWidth > 0) {
+              // Zoom factor to crop the Spline scene padding around the card graphic
+              const zoom = 1.45;
               const scaleX = container.clientWidth / canvas.clientWidth;
               const scaleY = container.clientHeight / canvas.clientHeight;
-              const scale = Math.min(scaleX, scaleY);
+              const scale = Math.min(scaleX, scaleY) * zoom;
               // Center the scaled canvas within the container
               const offsetX = (container.clientWidth - canvas.clientWidth * scale) / 2;
               const offsetY = (container.clientHeight - canvas.clientHeight * scale) / 2;

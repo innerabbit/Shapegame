@@ -52,8 +52,8 @@ export const CardReveal = forwardRef<SplineCardHandle, CardRevealProps>(
       <div
         className="relative"
         style={{
-          width: 240,
-          height: 340,
+          width: 'var(--card-w)',
+          aspectRatio: '5 / 7',
           cursor: !revealed ? 'pointer' : 'default',
         }}
         onClick={!revealed ? onClick : undefined}

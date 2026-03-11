@@ -506,17 +506,18 @@
 
 .xp-managed-window {
   position: absolute;
-  /* Mobile: full screen, ignore inline left/top */
-  inset: 0 !important;
   display: flex;
   flex-direction: column;
+  width: min(85vw, 900px);
+  height: min(80vh, 700px);
 }
 
-@media (min-width: 768px) {
+@media (max-width: 767px) {
   .xp-managed-window {
-    inset: auto !important;
-    width: min(85vw, 900px);
-    height: min(80vh, 700px);
+    /* Mobile: full screen, override inline left/top */
+    inset: 0 !important;
+    width: auto !important;
+    height: auto !important;
   }
 }
 

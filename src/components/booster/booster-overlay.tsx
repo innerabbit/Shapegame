@@ -131,23 +131,19 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
       {/* Particles */}
       <PackParticles active={showParticles} />
 
-      {/* Top hint bar */}
-      {hintText && stage !== 'summary' && (
-        <div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-[60]"
-          style={{
-            opacity: visible ? 1 : 0,
-            transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
-            transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-          }}
+      {/* Close X — top right */}
+      {stage !== 'summary' && (
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 z-[60] w-8 h-8 flex items-center justify-center rounded-sm"
+          aria-label="Close"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
         >
-          <div className="xp-window p-0">
-            <div className="px-4 py-1.5 text-[11px] text-[#222]">{hintText}</div>
-          </div>
-        </div>
+          <svg width="14" height="14" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="white" strokeWidth="1.5"/></svg>
+        </button>
       )}
 
-      {/* Booster Pack */}
+      {/* Booster Pack + centered hint */}
       {stage === 'pack' && (
         <div className="absolute inset-0 flex items-center justify-center z-[52]">
           <div
@@ -168,6 +164,36 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
               animationDuration={3000}
               onAnimationEnd={handleBoosterAnimationEnd}
             />
+            {/* Large hint centered on the pack */}
+            {hintText && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none z-[55]"
+                style={{
+                  opacity: visible ? 1 : 0,
+                  transition: 'opacity 0.3s ease-out',
+                }}
+              >
+                <div className="text-white text-center">
+                  <div className="text-xl font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">{hintText}</div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Reveal hint — top center */}
+      {stage === 'revealing' && hintText && (
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-[60]"
+          style={{
+            opacity: visible ? 1 : 0,
+            transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
+            transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
+          }}
+        >
+          <div className="xp-window p-0">
+            <div className="px-4 py-1.5 text-[11px] text-[#222]">{hintText}</div>
           </div>
         </div>
       )}
@@ -195,19 +221,10 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
         </div>
       )}
 
-      {/* Bottom bar — close (X), reveal all, view stats */}
-      {stage !== 'summary' && (
+      {/* Bottom bar — reveal all / view stats */}
+      {stage === 'revealing' && (
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2">
-          <button
-            onClick={onClose}
-            className="xp-btn-close w-7 h-7 flex items-center justify-center"
-            aria-label="Close"
-            style={{ background: '#c75050', borderRadius: 2 }}
-          >
-            <svg width="10" height="10" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="white" strokeWidth="1.5"/></svg>
-          </button>
-
-          {stage === 'revealing' && !allRevealed && (
+          {!allRevealed && (
             <button
               onClick={handleRevealAll}
               className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"
@@ -216,7 +233,7 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
             </button>
           )}
 
-          {stage === 'revealing' && allRevealed && (
+          {allRevealed && (
             <button
               onClick={() => setStage('summary')}
               className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"

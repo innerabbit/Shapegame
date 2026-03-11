@@ -24,11 +24,12 @@ type OverlayStage = 'pack' | 'revealing' | 'summary';
 
 interface BoosterOverlayProps {
   onClose: () => void;
+  preloadedCards?: CardData[];
 }
 
-export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
-  const [cards, setCards] = useState<CardData[]>([]);
-  const [packLoading, setPackLoading] = useState(true);
+export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps) {
+  const [cards, setCards] = useState<CardData[]>(preloadedCards ?? []);
+  const [packLoading, setPackLoading] = useState(!preloadedCards);
   const [stage, setStage] = useState<OverlayStage>('pack');
   const [boosterReady, setBoosterReady] = useState(false);
   const [boosterOpening, setBoosterOpening] = useState(false);
@@ -42,13 +43,14 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
   // Derived state
   const allRevealed = revealed.length >= cards.length && cards.length > 0;
 
-  // Fetch booster pack from API (fallback to local)
+  // Fetch booster pack from API (fallback to local) — skip if preloaded
   useEffect(() => {
+    if (preloadedCards) return;
     fetchBoosterPack().then(result => {
       setCards(result.cards);
       setPackLoading(false);
     });
-  }, []);
+  }, [preloadedCards]);
 
   // Fade in overlay
   useEffect(() => {

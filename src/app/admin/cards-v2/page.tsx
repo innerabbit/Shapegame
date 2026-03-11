@@ -143,10 +143,13 @@ export default function CardsV2Page() {
       const data = await res.json();
       if (data.results?.[0]?.description) {
         toast.success('Description generated');
-        await fetchCards();
-        // Update selected card
+        const newDesc = data.results[0].description;
+        // Update only this card in state — no full refetch
+        setCards(prev => prev.map(c =>
+          c.id === cardId ? { ...c, art_description: newDesc } : c
+        ));
         if (selectedCard?.id === cardId) {
-          setSelectedCard(prev => prev ? { ...prev, art_description: data.results[0].description } : null);
+          setSelectedCard(prev => prev ? { ...prev, art_description: newDesc } : null);
         }
       } else {
         toast.error(data.results?.[0]?.error || 'Failed');
@@ -167,7 +170,7 @@ export default function CardsV2Page() {
     if (res.ok) {
       toast.success('Description saved');
       setEditingDesc(false);
-      await fetchCards();
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, art_description: desc } : c));
       if (selectedCard?.id === cardId) {
         setSelectedCard(prev => prev ? { ...prev, art_description: desc } : null);
       }
@@ -184,7 +187,7 @@ export default function CardsV2Page() {
     if (res.ok) {
       toast.success('Name saved');
       setEditingName(false);
-      await fetchCards();
+      setCards(prev => prev.map(c => c.id === cardId ? { ...c, name: newName } : c));
       if (selectedCard?.id === cardId) {
         setSelectedCard(prev => prev ? { ...prev, name: newName } : null);
       }
@@ -826,9 +829,18 @@ export default function CardsV2Page() {
                     const data = await res.json();
                     if (data.success) {
                       toast.success('Art generated!');
-                      await fetchCards();
+                      // Update only this card in state — no full refetch
+                      const updatedCard = data.card as CardV2;
+                      setCards(prev => prev.map(c =>
+                        c.id === selectedCard.id
+                          ? { ...c, ...updatedCard, rarity_tier: updatedCard.rarity_tier ?? (updatedCard as any).rarity }
+                          : c
+                      ));
                       setArtVersion(v => v + 1);
-                      setSelectedCard(prev => prev ? { ...prev, raw_art_path: data.filePath } : null);
+                      setSelectedCard(prev => prev
+                        ? { ...prev, raw_art_path: data.filePath, art_prompt: data.card?.art_prompt }
+                        : null
+                      );
                     } else {
                       toast.error(data.error || 'Art generation failed');
                     }

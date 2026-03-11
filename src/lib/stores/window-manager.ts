@@ -14,11 +14,11 @@ export interface WindowState {
 }
 
 const WINDOW_DEFS: { id: WindowId; title: string; icon: string; x: number; y: number }[] = [
-  { id: 'onboarding', title: 'Welcome', icon: '🏠', x: 60, y: 20 },
-  { id: 'shop', title: 'Shop', icon: '🛒', x: 80, y: 35 },
-  { id: 'collection', title: 'Collection', icon: '🃏', x: 100, y: 15 },
-  { id: 'decks', title: 'Deck Builder', icon: '📋', x: 120, y: 40 },
-  { id: 'leaderboard', title: 'Leaderboard', icon: '🏆', x: 140, y: 25 },
+  { id: 'onboarding', title: 'Welcome', icon: '🏠', x: 150, y: 60 },
+  { id: 'shop', title: 'Shop', icon: '🛒', x: 30, y: 120 },
+  { id: 'collection', title: 'Collection', icon: '🃏', x: 280, y: 20 },
+  { id: 'decks', title: 'Deck Builder', icon: '📋', x: 50, y: 10 },
+  { id: 'leaderboard', title: 'Leaderboard', icon: '🏆', x: 220, y: 90 },
 ];
 
 interface WindowManagerStore {
@@ -39,14 +39,15 @@ function getInitialWindows(): WindowState[] {
     ...def,
     isOpen: true,
     isMinimized: false,
-    zIndex: 10 + i,
+    // Onboarding gets highest z-index so it's on top
+    zIndex: def.id === 'onboarding' ? 20 : 10 + i,
   }));
 }
 
 export const useWindowManager = create<WindowManagerStore>((set, get) => ({
   windows: getInitialWindows(),
-  focusedWindow: 'leaderboard',
-  nextZIndex: 16,
+  focusedWindow: 'onboarding',
+  nextZIndex: 21,
 
   openWindow: (id) => {
     const { nextZIndex } = get();

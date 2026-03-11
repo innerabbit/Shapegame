@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { SplineBooster, type SplineBoosterHandle } from './spline-booster';
 import { CardReveal, type CardData } from './card-reveal';
 import { PackParticles } from './particles';
@@ -39,8 +40,7 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
   const boosterRef = useRef<SplineBoosterHandle>(null);
 
   // Derived state
-  const lastRevealed = revealed.length > 0 ? revealed[revealed.length - 1] : null;
-  const allRevealed = revealed.length >= cards.length;
+  const allRevealed = revealed.length >= cards.length && cards.length > 0;
 
   // Fetch booster pack from API (fallback to local)
   useEffect(() => {
@@ -50,15 +50,13 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     });
   }, []);
 
-  // Fade in overlay — double-RAF to ensure browser paints initial state first
+  // Fade in overlay
   useEffect(() => {
     const id = requestAnimationFrame(() => {
       requestAnimationFrame(() => setVisible(true));
     });
     return () => cancelAnimationFrame(id);
   }, []);
-
-  // No auto-summary — user closes manually after revealing all cards
 
   // Cleanup stagger timers
   useEffect(() => {
@@ -69,8 +67,6 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     if (!boosterReady || boosterOpening || packLoading) return;
     setBoosterOpening(true);
     setShowParticles(true);
-
-    // Trigger the Spline booster open animation
     boosterRef.current?.triggerOpen();
   }, [boosterReady, boosterOpening, packLoading]);
 
@@ -78,17 +74,14 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     setStage('revealing');
   }, []);
 
-  /** Click any unrevealed card to flip it */
   const handleCardClick = useCallback((index: number) => {
     setRevealed(prev => {
-      if (prev.includes(index)) return prev; // already revealed
+      if (prev.includes(index)) return prev;
       return [...prev, index];
     });
-    // Trigger Spline flip animation
     cardRefs.current[index]?.triggerFlip();
   }, []);
 
-  /** Reveal all remaining cards with stagger */
   const handleRevealAll = useCallback(() => {
     const unrevealed = cards
       .map((_, i) => i)
@@ -100,7 +93,6 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
           if (prev.includes(cardIndex)) return prev;
           return [...prev, cardIndex];
         });
-        // Trigger Spline flip animation
         cardRefs.current[cardIndex]?.triggerFlip();
       }, i * 250);
       revealAllTimers.current.push(timer);
@@ -129,43 +121,18 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     packLoading ? 'Loading pack...' :
     stage === 'pack' && boosterReady && !boosterOpening ? 'Click the pack to open' :
     stage === 'pack' && boosterOpening ? 'Opening...' :
-    stage === 'revealing' && !allRevealed ? `Click any card to reveal \u2022 ${revealed.length} of ${cards.length}` :
+    stage === 'revealing' && !allRevealed ? `Click cards to reveal \u2022 ${revealed.length}/${cards.length}` :
+    stage === 'revealing' && allRevealed ? `All ${cards.length} cards revealed!` :
     null;
 
-  return (
-    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm">
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm">
 
       {/* Particles */}
       <PackParticles active={showParticles} />
 
-      {/* Hint + Reveal All button */}
-      {stage === 'revealing' && (
-        <div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2"
-          style={{
-            opacity: visible ? 1 : 0,
-            transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
-            transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-          }}
-        >
-          <div className="xp-window p-0">
-            <div className="px-4 py-1.5 text-[11px] text-[#222]">
-              {allRevealed ? `All ${cards.length} cards revealed!` : hintText}
-            </div>
-          </div>
-          {!allRevealed && (
-            <button
-              onClick={handleRevealAll}
-              className="xp-button px-3 py-1 text-[11px] whitespace-nowrap"
-            >
-              Reveal All
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Pack-stage hint (separate from revealing) */}
-      {stage === 'pack' && hintText && (
+      {/* Top hint bar */}
+      {hintText && stage !== 'summary' && (
         <div
           className="absolute top-4 left-1/2 -translate-x-1/2 z-[60]"
           style={{
@@ -179,14 +146,6 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
           </div>
         </div>
       )}
-
-      {/* Close button — always visible */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 right-4 z-[60] xp-button px-3 py-1 text-[11px]"
-      >
-        Close
-      </button>
 
       {/* Booster Pack */}
       {stage === 'pack' && (
@@ -215,11 +174,11 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
 
       {/* Cards — 6 Spline 3D cards */}
       {stage === 'revealing' && (
-        <div className="absolute inset-0 z-[52] flex items-center justify-center pt-10 pb-2">
+        <div className="absolute inset-0 z-[52] flex items-center justify-center pt-10 pb-16">
           <div
             className="grid grid-cols-3 gap-0 place-items-center"
             style={{
-              '--card-w': 'min(calc((100vw - 4px) / 3), calc((100vh - 80px) / 2 * 5 / 7))',
+              '--card-w': 'min(calc((100vw - 4px) / 3), calc((100vh - 120px) / 2 * 5 / 7))',
             } as React.CSSProperties}
           >
             {cards.map((card, i) => (
@@ -236,14 +195,35 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
         </div>
       )}
 
-      {/* Card reveal info popup — shows for the last revealed card */}
-      {stage === 'revealing' && lastRevealed !== null && (
-        <div
-          key={lastRevealed}
-          className="absolute bottom-20 left-1/2 z-[60] animate-popup-in"
-          style={{ transform: 'translateX(-50%)' }}
-        >
-          <CardInfoPopup card={cards[lastRevealed]} />
+      {/* Bottom bar — close (X), reveal all, view stats */}
+      {stage !== 'summary' && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2">
+          <button
+            onClick={onClose}
+            className="xp-btn-close w-7 h-7 flex items-center justify-center"
+            aria-label="Close"
+            style={{ background: '#c75050', borderRadius: 2 }}
+          >
+            <svg width="10" height="10" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="white" strokeWidth="1.5"/></svg>
+          </button>
+
+          {stage === 'revealing' && !allRevealed && (
+            <button
+              onClick={handleRevealAll}
+              className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"
+            >
+              Reveal All
+            </button>
+          )}
+
+          {stage === 'revealing' && allRevealed && (
+            <button
+              onClick={() => setStage('summary')}
+              className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"
+            >
+              View Stats
+            </button>
+          )}
         </div>
       )}
 
@@ -257,43 +237,8 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
           />
         </div>
       )}
-    </div>
-  );
-}
-
-// ── Card info popup ─────────────────────────────────────────────
-
-function CardInfoPopup({ card }: { card: CardData }) {
-  return (
-    <div className="xp-window p-0" style={{ minWidth: 240 }}>
-      <div className="xp-title-bar" style={{ background: RARITY_HEX[card.rarity_tier] }}>
-        <div className="flex items-center gap-[6px]">
-          <span className="text-sm">{MANA_COLORS[card.mana_color].emoji}</span>
-          <span className="xp-title-text uppercase tracking-wider">{card.shape}</span>
-        </div>
-        <span className="xp-title-text text-[10px]">#{card.card_number}</span>
-      </div>
-      <div className="p-2.5 text-center">
-        <div className="flex items-center justify-center gap-2 mb-1.5">
-          <span
-            className="text-[9px] font-bold uppercase tracking-[0.2em] px-1.5 py-0.5"
-            style={{ color: RARITY_HEX[card.rarity_tier], border: `1px solid ${RARITY_HEX[card.rarity_tier]}` }}
-          >
-            {RARITY_LABELS[card.rarity_tier]}
-          </span>
-          <span className="text-[#666] text-[9px] uppercase tracking-wider">{card.material}</span>
-        </div>
-        <div className="flex justify-center gap-2.5 text-[10px]">
-          <span className="text-[#c00]">ATK {card.atk}</span>
-          <span className="text-[#36c]">DEF {card.def}</span>
-          <span className="text-[#060]">HP {card.hp}</span>
-          <span className="text-[#c90]">MANA {card.mana_cost}</span>
-        </div>
-        {card.ability && (
-          <div className="mt-1 text-[#639] text-[9px]">{card.ability}</div>
-        )}
-      </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

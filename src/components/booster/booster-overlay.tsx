@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { HoloPack, type PackPhase } from './holo-pack';
+import { SplineBooster, type SplineBoosterHandle } from './spline-booster';
 import { CardReveal, type CardData } from './card-reveal';
 import { PackParticles } from './particles';
 import { fetchBoosterPack } from '@/lib/cards/fetch-pack';
@@ -29,12 +29,14 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
   const [cards, setCards] = useState<CardData[]>([]);
   const [packLoading, setPackLoading] = useState(true);
   const [stage, setStage] = useState<OverlayStage>('pack');
-  const [packPhase, setPackPhase] = useState<PackPhase>('entering');
+  const [boosterReady, setBoosterReady] = useState(false);
+  const [boosterOpening, setBoosterOpening] = useState(false);
   const [revealed, setRevealed] = useState<number[]>([]);
   const [showParticles, setShowParticles] = useState(false);
   const [visible, setVisible] = useState(false);
   const revealAllTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const cardRefs = useRef<(SplineCardHandle | null)[]>([]);
+  const boosterRef = useRef<SplineBoosterHandle>(null);
 
   // Derived state
   const lastRevealed = revealed.length > 0 ? revealed[revealed.length - 1] : null;
@@ -56,19 +58,7 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // Pack enters → idle
-  useEffect(() => {
-    const t = setTimeout(() => setPackPhase('idle'), 800);
-    return () => clearTimeout(t);
-  }, []);
-
-  // Transition to summary when all cards revealed
-  useEffect(() => {
-    if (allRevealed && stage === 'revealing') {
-      const t = setTimeout(() => setStage('summary'), 1500);
-      return () => clearTimeout(t);
-    }
-  }, [allRevealed, stage]);
+  // No auto-summary — user closes manually after revealing all cards
 
   // Cleanup stagger timers
   useEffect(() => {
@@ -76,17 +66,17 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
   }, []);
 
   const handlePackClick = useCallback(() => {
-    if (packPhase !== 'idle' || packLoading) return;
-    setPackPhase('shaking');
-    setTimeout(() => {
-      setPackPhase('tearing');
-      setShowParticles(true);
-    }, 600);
-    setTimeout(() => {
-      setPackPhase('done');
-      setStage('revealing');
-    }, 1400);
-  }, [packPhase]);
+    if (!boosterReady || boosterOpening || packLoading) return;
+    setBoosterOpening(true);
+    setShowParticles(true);
+
+    // Trigger the Spline booster open animation
+    boosterRef.current?.triggerOpen();
+  }, [boosterReady, boosterOpening, packLoading]);
+
+  const handleBoosterAnimationEnd = useCallback(() => {
+    setStage('revealing');
+  }, []);
 
   /** Click any unrevealed card to flip it */
   const handleCardClick = useCallback((index: number) => {
@@ -120,7 +110,8 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
   const handleNewPack = useCallback(() => {
     setPackLoading(true);
     setStage('pack');
-    setPackPhase('entering');
+    setBoosterReady(false);
+    setBoosterOpening(false);
     setRevealed([]);
     setShowParticles(false);
     revealAllTimers.current.forEach(clearTimeout);
@@ -129,8 +120,6 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     fetchBoosterPack().then(result => {
       setCards(result.cards);
       setPackLoading(false);
-      // Re-enter pack animation
-      setTimeout(() => setPackPhase('idle'), 800);
     });
   }, []);
 
@@ -138,20 +127,19 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
 
   const hintText =
     packLoading ? 'Loading pack...' :
-    stage === 'pack' && packPhase === 'idle' ? 'Click the pack to open' :
-    stage === 'pack' && (packPhase === 'shaking' || packPhase === 'tearing') ? 'Opening...' :
+    stage === 'pack' && boosterReady && !boosterOpening ? 'Click the pack to open' :
+    stage === 'pack' && boosterOpening ? 'Opening...' :
     stage === 'revealing' && !allRevealed ? `Click any card to reveal \u2022 ${revealed.length} of ${cards.length}` :
     null;
 
   return (
-    <div className="fixed inset-0 z-50">
-      {/* Fully transparent backdrop (no grey overlay) */}
+    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
 
       {/* Particles */}
       <PackParticles active={showParticles} />
 
       {/* Hint + Reveal All button */}
-      {stage === 'revealing' && !allRevealed && (
+      {stage === 'revealing' && (
         <div
           className="absolute top-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2"
           style={{
@@ -161,14 +149,18 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
           }}
         >
           <div className="xp-window p-0">
-            <div className="px-4 py-1.5 text-[11px] text-[#222]">{hintText}</div>
+            <div className="px-4 py-1.5 text-[11px] text-[#222]">
+              {allRevealed ? `All ${cards.length} cards revealed!` : hintText}
+            </div>
           </div>
-          <button
-            onClick={handleRevealAll}
-            className="xp-button px-3 py-1 text-[11px] whitespace-nowrap"
-          >
-            Reveal All
-          </button>
+          {!allRevealed && (
+            <button
+              onClick={handleRevealAll}
+              className="xp-button px-3 py-1 text-[11px] whitespace-nowrap"
+            >
+              Reveal All
+            </button>
+          )}
         </div>
       )}
 
@@ -188,27 +180,43 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
         </div>
       )}
 
-      {/* Close button */}
-      {stage !== 'summary' && (
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 z-[60] xp-button px-3 py-1 text-[11px]"
-        >
-          Close
-        </button>
-      )}
+      {/* Close button — always visible */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 right-4 z-[60] xp-button px-3 py-1 text-[11px]"
+      >
+        Close
+      </button>
 
-      {/* Pack */}
+      {/* Booster Pack */}
       {stage === 'pack' && (
         <div className="absolute inset-0 flex items-center justify-center z-[52]">
-          <HoloPack phase={packPhase} onClick={handlePackClick} />
+          <div
+            className="relative"
+            style={{
+              width: '80vw',
+              height: '80vh',
+              maxWidth: 600,
+              maxHeight: 700,
+              cursor: boosterReady && !boosterOpening ? 'pointer' : 'default',
+            }}
+          >
+            <SplineBooster
+              ref={boosterRef}
+              className="w-full h-full"
+              onLoad={() => setBoosterReady(true)}
+              onClick={handlePackClick}
+              animationDuration={3000}
+              onAnimationEnd={handleBoosterAnimationEnd}
+            />
+          </div>
         </div>
       )}
 
       {/* Cards — 6 Spline 3D cards */}
       {stage === 'revealing' && (
-        <div className="absolute inset-0 flex items-center justify-center z-[52]">
-          <div className="flex gap-3 flex-wrap justify-center max-w-[900px] px-4">
+        <div className="absolute inset-0 flex items-center justify-center z-[52] pt-12 pb-24">
+          <div className="flex gap-1 flex-wrap justify-center max-w-[740px]">
             {cards.map((card, i) => (
               <CardReveal
                 key={i}

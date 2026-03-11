@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { useCards } from '@/lib/hooks/use-cards';
 import { MANA_COLORS, RARITY_LABELS, SHAPES } from '@/lib/constants';
 import type { Card as CardType, RarityTier } from '@/types/cards';
 import { toast } from 'sonner';
+import { SplineCard, type SplineCardContent, type SplineCardHandle } from '@/components/booster/spline-card';
 
 // ── Storage keys ───────────────────────────────────────────
 
@@ -57,7 +58,7 @@ interface SceneTier {
   desc: string;
 }
 
-const SCENE_TIERS: SceneTier[] = [
+const DEFAULT_SCENE_TIERS: SceneTier[] = [
   {
     threshold: 0,
     label: 'Quiet',
@@ -85,10 +86,10 @@ const SCENE_TIERS: SceneTier[] = [
   },
 ];
 
-function getSceneTier(card: CardType): SceneTier {
+function getSceneTier(card: CardType, tiers: SceneTier[]): SceneTier {
   const power = card.atk + card.def + card.hp;
-  let tier = SCENE_TIERS[0];
-  for (const t of SCENE_TIERS) {
+  let tier = tiers[0];
+  for (const t of tiers) {
     if (power >= t.threshold) tier = t;
   }
   return tier;
@@ -100,8 +101,8 @@ function getShapeEmoji(shape: string): string {
   return SHAPES.find(s => s.shape === shape)?.emoji ?? '?';
 }
 
-function replaceVars(template: string, card: CardType): string {
-  const sceneTier = getSceneTier(card);
+function replaceVars(template: string, card: CardType, tiers: SceneTier[]): string {
+  const sceneTier = getSceneTier(card, tiers);
   return template
     .replace(/\{shape\}/g, card.shape)
     .replace(/\{material\}/g, card.material)
@@ -140,6 +141,9 @@ export default function GeneratePage() {
   const [shapeTemplate, setShapeTemplate] = useState(DEFAULT_SHAPE_TEMPLATE);
   const [sceneTemplate, setSceneTemplate] = useState(DEFAULT_SCENE_TEMPLATE);
 
+  // Editable scene tiers
+  const [sceneTiers, setSceneTiers] = useState<SceneTier[]>(DEFAULT_SCENE_TIERS);
+
   const [selectedCard, setSelectedCard] = useState<CardType | null>(null);
   const [generating, setGenerating] = useState(false);
   const [result, setResult] = useState<{
@@ -155,44 +159,109 @@ export default function GeneratePage() {
     timestamp: number;
   }>>([]);
 
-  // Load from localStorage
+  // Track saved state for dirty detection
+  const [savedPrompts, setSavedPrompts] = useState<{ style: string; shape: string; scene: string; sceneTiers: SceneTier[] } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Per-section dirty flags
+  const isStyleDirty = savedPrompts ? stylePrompt !== savedPrompts.style : false;
+  const isShapeDirty = savedPrompts ? shapeTemplate !== savedPrompts.shape : false;
+  const isSceneDirty = savedPrompts ? sceneTemplate !== savedPrompts.scene : false;
+  const isTiersDirty = savedPrompts ? JSON.stringify(sceneTiers) !== JSON.stringify(savedPrompts.sceneTiers) : false;
+
+  // Load prompts: API first → localStorage fallback → defaults
   useEffect(() => {
-    const s1 = localStorage.getItem(KEY_STYLE);
-    const s2 = localStorage.getItem(KEY_SHAPE);
-    const s3 = localStorage.getItem(KEY_SCENE);
-    if (s1) setStylePrompt(s1);
-    if (s2) setShapeTemplate(s2);
-    if (s3) setSceneTemplate(s3);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/prompts');
+        const { prompts } = await res.json();
+        if (!cancelled && prompts) {
+          if (prompts.style) setStylePrompt(prompts.style);
+          if (prompts.shape) setShapeTemplate(prompts.shape);
+          if (prompts.scene) setSceneTemplate(prompts.scene);
+          if (prompts.sceneTiers) setSceneTiers(prompts.sceneTiers);
+          setSavedPrompts({
+            style: prompts.style || DEFAULT_STYLE,
+            shape: prompts.shape || DEFAULT_SHAPE_TEMPLATE,
+            scene: prompts.scene || DEFAULT_SCENE_TEMPLATE,
+            sceneTiers: prompts.sceneTiers || DEFAULT_SCENE_TIERS,
+          });
+          return;
+        }
+      } catch { /* API unavailable — fall through */ }
+
+      if (cancelled) return;
+      // Fallback to localStorage
+      const s1 = localStorage.getItem(KEY_STYLE);
+      const s2 = localStorage.getItem(KEY_SHAPE);
+      const s3 = localStorage.getItem(KEY_SCENE);
+      if (s1) setStylePrompt(s1);
+      if (s2) setShapeTemplate(s2);
+      if (s3) setSceneTemplate(s3);
+      setSavedPrompts({
+        style: s1 || DEFAULT_STYLE,
+        shape: s2 || DEFAULT_SHAPE_TEMPLATE,
+        scene: s3 || DEFAULT_SCENE_TEMPLATE,
+        sceneTiers: DEFAULT_SCENE_TIERS,
+      });
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  // Save helpers
+  // Save prompts to API + localStorage
+  const savePrompts = useCallback(async () => {
+    setSaving(true);
+    try {
+      const body = { style: stylePrompt, shape: shapeTemplate, scene: sceneTemplate, sceneTiers };
+      const res = await fetch('/api/prompts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      // Also persist to localStorage as backup
+      localStorage.setItem(KEY_STYLE, stylePrompt);
+      localStorage.setItem(KEY_SHAPE, shapeTemplate);
+      localStorage.setItem(KEY_SCENE, sceneTemplate);
+      setSavedPrompts(body);
+      toast.success('Prompts saved');
+    } catch (err: any) {
+      toast.error(`Save failed: ${err.message}`);
+      // Still save to localStorage
+      localStorage.setItem(KEY_STYLE, stylePrompt);
+      localStorage.setItem(KEY_SHAPE, shapeTemplate);
+      localStorage.setItem(KEY_SCENE, sceneTemplate);
+    } finally {
+      setSaving(false);
+    }
+  }, [stylePrompt, shapeTemplate, sceneTemplate, sceneTiers]);
+
+  // Local update helpers (just state, no auto-save)
   const updateStyle = useCallback((v: string) => {
     setStylePrompt(v);
-    localStorage.setItem(KEY_STYLE, v);
   }, []);
   const updateShape = useCallback((v: string) => {
     setShapeTemplate(v);
-    localStorage.setItem(KEY_SHAPE, v);
   }, []);
   const updateScene = useCallback((v: string) => {
     setSceneTemplate(v);
-    localStorage.setItem(KEY_SCENE, v);
   }, []);
 
   // Scene tier for selected card
   const sceneTier = useMemo(
-    () => selectedCard ? getSceneTier(selectedCard) : null,
-    [selectedCard]
+    () => selectedCard ? getSceneTier(selectedCard, sceneTiers) : null,
+    [selectedCard, sceneTiers]
   );
 
   // Assembled prompts per section (with vars replaced)
   const assembledShape = useMemo(
-    () => selectedCard ? replaceVars(shapeTemplate, selectedCard) : '',
-    [shapeTemplate, selectedCard]
+    () => selectedCard ? replaceVars(shapeTemplate, selectedCard, sceneTiers) : '',
+    [shapeTemplate, selectedCard, sceneTiers]
   );
   const assembledScene = useMemo(
-    () => selectedCard ? replaceVars(sceneTemplate, selectedCard) : '',
-    [sceneTemplate, selectedCard]
+    () => selectedCard ? replaceVars(sceneTemplate, selectedCard, sceneTiers) : '',
+    [sceneTemplate, selectedCard, sceneTiers]
   );
 
   // Final prompt = style + shape + scene
@@ -222,20 +291,23 @@ export default function GeneratePage() {
   const handleGenerate = useCallback(async () => {
     if (!selectedCard || !finalPrompt) return;
 
-    if (selectedCard.id.startsWith('local-')) {
-      toast.error('Cannot generate — card is local. Seed database first.');
-      return;
-    }
-
     setGenerating(true);
     setError(null);
     setResult(null);
+
+    const isLocal = selectedCard.id.startsWith('local-');
 
     try {
       const res = await fetch('/api/generate/art', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cardId: selectedCard.id, prompt: finalPrompt }),
+        body: JSON.stringify({
+          cardId: selectedCard.id,
+          prompt: finalPrompt,
+          cardData: selectedCard,
+          // Test mode: skip DB/Storage when cards table doesn't exist yet
+          testOnly: isLocal,
+        }),
       });
 
       const data = await res.json();
@@ -253,14 +325,22 @@ export default function GeneratePage() {
         return;
       }
 
-      setResult({ imageBase64: data.imageBase64, card: data.card, filePath: data.filePath });
+      setResult({
+        imageBase64: data.imageBase64,
+        card: data.card ?? selectedCard,
+        filePath: data.filePath ?? '',
+      });
       setHistory(prev => [{
         imageBase64: data.imageBase64,
-        card: data.card,
+        card: data.card ?? selectedCard,
         prompt: finalPrompt,
         timestamp: Date.now(),
       }, ...prev].slice(0, 10));
-      toast.success(`Art generated for #${selectedCard.card_number}`);
+      toast.success(
+        data.testOnly
+          ? `Preview generated for #${selectedCard.card_number} (test mode — not saved to DB)`
+          : `Art generated for #${selectedCard.card_number}`
+      );
     } catch (err: any) {
       const msg = `Network error: ${err.message}`;
       setError(msg);
@@ -293,6 +373,7 @@ export default function GeneratePage() {
             </span>
           </p>
         </div>
+{/* Save button removed — now inside each PromptSection */}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -325,6 +406,9 @@ export default function GeneratePage() {
             onChange={updateStyle}
             onReset={() => updateStyle(DEFAULT_STYLE)}
             rows={8}
+            dirty={isStyleDirty}
+            onSave={savePrompts}
+            saving={saving}
           />
 
           {/* 2. Shape Focus */}
@@ -336,6 +420,9 @@ export default function GeneratePage() {
             onReset={() => updateShape(DEFAULT_SHAPE_TEMPLATE)}
             rows={3}
             preview={selectedCard ? assembledShape : undefined}
+            dirty={isShapeDirty}
+            onSave={savePrompts}
+            saving={saving}
           />
 
           {/* 3. Scene */}
@@ -347,7 +434,63 @@ export default function GeneratePage() {
             onReset={() => updateScene(DEFAULT_SCENE_TEMPLATE)}
             rows={3}
             preview={selectedCard ? assembledScene : undefined}
+            dirty={isSceneDirty}
+            onSave={savePrompts}
+            saving={saving}
           />
+
+          {/* 4. Scene Tiers — editable desc per power level */}
+          <Card className={isTiersDirty ? 'ring-1 ring-amber-600/50' : ''}>
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-sm font-medium">🎭 Scene Tiers</CardTitle>
+                  <p className="text-[11px] text-neutral-500 mt-0.5">
+                    Scene description per power level (ATK+DEF+HP). Used as {'{scene_desc}'} in Scene template.
+                  </p>
+                </div>
+                <div className="flex items-center gap-1">
+                  {isTiersDirty && (
+                    <Button size="sm" onClick={savePrompts} disabled={saving}
+                      className="text-xs h-6 bg-amber-600 hover:bg-amber-700 text-white">
+                      {saving ? '...' : '💾 Save'}
+                    </Button>
+                  )}
+                  <Button variant="ghost" size="sm" className="text-xs text-neutral-500 h-6"
+                    onClick={() => setSceneTiers(DEFAULT_SCENE_TIERS)}>
+                    Reset
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sceneTiers.map((tier, i) => (
+                <div key={tier.threshold}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      ⚡ {tier.threshold}+
+                    </Badge>
+                    <span className="text-xs font-medium text-neutral-300">{tier.label}</span>
+                    {selectedCard && sceneTier?.threshold === tier.threshold && (
+                      <Badge className="text-[9px] bg-amber-600/20 text-amber-400 border-amber-600/30">
+                        active
+                      </Badge>
+                    )}
+                  </div>
+                  <Textarea
+                    value={tier.desc}
+                    onChange={(e) => {
+                      const updated = [...sceneTiers];
+                      updated[i] = { ...tier, desc: e.target.value };
+                      setSceneTiers(updated);
+                    }}
+                    rows={2}
+                    className="font-mono text-xs bg-neutral-900 border-neutral-700 resize-none"
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         </div>
 
         {/* ── Right Column: Generate & Result ───────── */}
@@ -384,35 +527,63 @@ export default function GeneratePage() {
             </Card>
           )}
 
-          {/* Result */}
+          {/* Result — 3D Card + Raw Art side by side */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Result</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm font-medium">Result</CardTitle>
+                {result && (
+                  <div className="flex items-center gap-2 text-xs text-neutral-400">
+                    {result.filePath ? (
+                      <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-800">
+                        Saved to DB ✓
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-900/30 text-amber-400 border-amber-800">
+                        Test mode
+                      </Badge>
+                    )}
+                  </div>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {generating ? (
-                <div className="flex items-center justify-center h-80 bg-neutral-900 rounded-md border border-neutral-700">
+                <div className="flex items-center justify-center h-96 bg-neutral-900 rounded-md border border-neutral-700">
                   <div className="text-center space-y-3">
                     <Spinner size="lg" />
-                    <p className="text-sm text-neutral-400">Generating with Gemini...</p>
+                    <p className="text-sm text-neutral-400">Generating with Gemini 3.1...</p>
                     <p className="text-xs text-neutral-500">This may take 10-20 seconds</p>
                   </div>
                 </div>
               ) : result ? (
-                <div className="space-y-3">
-                  <div className="relative aspect-square bg-neutral-900 rounded-md border border-neutral-700 overflow-hidden">
+                <div className="space-y-4">
+                  {/* 3D Card Preview */}
+                  <div className="flex justify-center items-center">
+                    <div style={{ width: 300, height: 400 }}>
+                      <SplineCard
+                        className="w-full h-full"
+                        cardContent={{
+                          title: result.card.shape.toUpperCase(),
+                          description: result.card.ability || '',
+                          cardNumber: `#${String(result.card.card_number).padStart(3, '0')}`,
+                          rarity: RARITY_LABELS[result.card.rarity_tier as RarityTier]?.toUpperCase() ?? '',
+                          stats: `${result.card.atk} / ${result.card.def}`,
+                          manaCost: String(result.card.mana_cost),
+                          material: result.card.material.toUpperCase(),
+                          artUrl: result.imageBase64,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  {/* Raw art — full width */}
+                  <div className="relative aspect-[4/3] bg-neutral-900 rounded-md border border-neutral-700 overflow-hidden">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={result.imageBase64}
                       alt={`Generated art for card #${result.card.card_number}`}
                       className="w-full h-full object-contain"
                     />
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-neutral-400">
-                    <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-800">
-                      Saved to DB ✓
-                    </Badge>
-                    <span className="truncate">{result.filePath}</span>
                   </div>
                 </div>
               ) : (
@@ -462,7 +633,7 @@ export default function GeneratePage() {
 // ── Prompt Section ──────────────────────────────────────────
 
 function PromptSection({
-  label, hint, value, onChange, onReset, rows, preview,
+  label, hint, value, onChange, onReset, rows, preview, dirty, onSave, saving,
 }: {
   label: string;
   hint: string;
@@ -471,18 +642,33 @@ function PromptSection({
   onReset: () => void;
   rows: number;
   preview?: string;
+  dirty?: boolean;
+  onSave?: () => void;
+  saving?: boolean;
 }) {
   return (
-    <Card>
+    <Card className={dirty ? 'ring-1 ring-amber-600/50' : ''}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-sm font-medium">{label}</CardTitle>
             <p className="text-[11px] text-neutral-500 mt-0.5">{hint}</p>
           </div>
-          <Button variant="ghost" size="sm" className="text-xs text-neutral-500 h-6" onClick={onReset}>
-            Reset
-          </Button>
+          <div className="flex items-center gap-1">
+            {dirty && onSave && (
+              <Button
+                size="sm"
+                onClick={onSave}
+                disabled={saving}
+                className="text-xs h-6 bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {saving ? '...' : '💾 Save'}
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" className="text-xs text-neutral-500 h-6" onClick={onReset}>
+              Reset
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-2">

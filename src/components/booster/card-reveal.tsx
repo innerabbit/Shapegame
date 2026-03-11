@@ -52,16 +52,16 @@ export const CardReveal = forwardRef<SplineCardHandle, CardRevealProps>(
       <div
         className="relative"
         style={{
-          width: 180,
-          height: 260,
+          width: 240,
+          height: 340,
           cursor: !revealed ? 'pointer' : 'default',
         }}
+        onClick={!revealed ? onClick : undefined}
       >
         <SplineCard
           ref={ref}
-          className="w-full h-full"
+          className="w-full h-full pointer-events-none"
           cardContent={cardContent}
-          onClick={!revealed ? onClick : undefined}
           flipObjectName="Card"
         />
       </div>

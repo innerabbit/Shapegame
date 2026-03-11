@@ -3,47 +3,31 @@ import { GoogleGenAI } from '@google/genai';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 // ── POST /api/generate/art ──────────────────────────────
-// Generate card art via Gemini and save to Supabase Storage
+// Generate card art via Gemini and optionally save to Supabase Storage
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function POST(request: NextRequest) {
-  const { cardId, prompt } = await request.json();
+  const { cardId, prompt, cardData, testOnly } = await request.json();
 
-  if (!cardId || !prompt) {
+  if (!prompt) {
     return NextResponse.json(
-      { error: 'cardId and prompt are required' },
+      { error: 'prompt is required' },
       { status: 400 }
     );
   }
 
-  const supabase = createAdminClient();
-
-  // 1. Fetch card from DB
-  const { data: card, error: cardError } = await supabase
-    .from('cards')
-    .select('*')
-    .eq('id', cardId)
-    .single();
-
-  if (cardError || !card) {
-    return NextResponse.json(
-      { error: `Card not found: ${cardError?.message ?? 'unknown'}` },
-      { status: 404 }
-    );
-  }
-
-  // 2. Call Gemini API
+  // ── 1. Call Gemini API (always — this is the core) ──────
   let imageBase64: string;
   let mimeType: string;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-2.0-flash-exp',
+      model: 'gemini-3.1-flash-image-preview',
       contents: prompt,
       config: {
         responseModalities: ['IMAGE'],
-        imageConfig: { aspectRatio: '1:1' },
+        imageConfig: { aspectRatio: '4:3' },
       },
     });
 
@@ -94,7 +78,71 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 3. Upload to Supabase Storage
+  // ── Test-only mode: return image without touching DB ────
+  if (testOnly) {
+    return NextResponse.json({
+      success: true,
+      testOnly: true,
+      card: cardData ?? null,
+      filePath: null,
+      imageBase64: `data:${mimeType};base64,${imageBase64}`,
+    });
+  }
+
+  // ── 2. Resolve card in DB ───────────────────────────────
+  const supabase = createAdminClient();
+  let card: Record<string, any>;
+
+  if (cardId?.startsWith('local-') && cardData) {
+    // Local card — insert into DB so we can save art
+    const {
+      id: _localId,
+      created_at: _ca,
+      updated_at: _ua,
+      generated_at: _ga,
+      approved_at: _aa,
+      finalized_at: _fa,
+      ...insertData
+    } = cardData;
+
+    const { data: created, error: createError } = await supabase
+      .from('cards')
+      .upsert(
+        { ...insertData, gen_status: 'generating' },
+        { onConflict: 'card_number' }
+      )
+      .select()
+      .single();
+
+    if (createError || !created) {
+      return NextResponse.json(
+        { error: `Failed to create card: ${createError?.message ?? 'unknown'}` },
+        { status: 500 }
+      );
+    }
+    card = created;
+  } else if (cardId) {
+    const { data: found, error: cardError } = await supabase
+      .from('cards')
+      .select('*')
+      .eq('id', cardId)
+      .single();
+
+    if (cardError || !found) {
+      return NextResponse.json(
+        { error: `Card not found: ${cardError?.message ?? 'unknown'}` },
+        { status: 404 }
+      );
+    }
+    card = found;
+  } else {
+    return NextResponse.json(
+      { error: 'cardId or cardData is required' },
+      { status: 400 }
+    );
+  }
+
+  // ── 3. Upload to Supabase Storage ──────────────────────
   const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
   const fileName = `${String(card.card_number).padStart(3, '0')}_${card.shape}_${card.material}_${card.background}.${ext}`;
   const filePath = `raw-arts/${fileName}`;
@@ -115,7 +163,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 4. Update card in DB
+  // ── 4. Update card in DB ───────────────────────────────
   const { data: updatedCard, error: updateError } = await supabase
     .from('cards')
     .update({
@@ -123,7 +171,7 @@ export async function POST(request: NextRequest) {
       gen_status: 'generated',
       generated_at: new Date().toISOString(),
     })
-    .eq('id', cardId)
+    .eq('id', card.id)
     .select()
     .single();
 
@@ -134,7 +182,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 5. Return result with base64 preview
+  // ── 5. Return result with base64 preview ───────────────
   return NextResponse.json({
     success: true,
     card: updatedCard,

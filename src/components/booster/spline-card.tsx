@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import type { Application as SplineApp } from '@splinetool/runtime';
 
-const SCENE_URL = 'https://prod.spline.design/fNEyIuTyKEBBMlkQ/scene.splinecode';
+const SCENE_URL = 'https://prod.spline.design/fNEyIuTyKEBBMlkQ/scene.splinecode?v=3';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -308,6 +308,24 @@ export const SplineCard = forwardRef<SplineCardHandle, SplineCardProps>(
             return;
           }
           appRef.current = app;
+
+          // Scale canvas to fit container via CSS transform.
+          // Spline renders at its native frame size (600×800) — setSize() is unreliable.
+          // Instead we CSS-scale the canvas down to fit the parent container.
+          requestAnimationFrame(() => {
+            const container = canvas.parentElement;
+            if (container && canvas.clientWidth > 0) {
+              const scaleX = container.clientWidth / canvas.clientWidth;
+              const scaleY = container.clientHeight / canvas.clientHeight;
+              const scale = Math.min(scaleX, scaleY);
+              // Center the scaled canvas within the container
+              const offsetX = (container.clientWidth - canvas.clientWidth * scale) / 2;
+              const offsetY = (container.clientHeight - canvas.clientHeight * scale) / 2;
+              canvas.style.transformOrigin = 'top left';
+              canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            }
+          });
+
           setLoaded(true);
           onLoad?.();
         }).catch((err) => {
@@ -353,7 +371,7 @@ export const SplineCard = forwardRef<SplineCardHandle, SplineCardProps>(
 
     return (
       <div
-        className={`relative ${className}`}
+        className={`relative overflow-hidden ${className}`}
         style={{ ...style }}
         onClick={onClick}
       >

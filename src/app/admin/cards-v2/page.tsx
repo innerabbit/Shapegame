@@ -105,6 +105,32 @@ export default function CardsV2Page() {
     artifacts: cards.filter(c => c.card_type === 'artifact').length,
   }), [cards]);
 
+  // Memoize Spline content so the 3D card only re-renders when card data actually changes
+  const splineContent = useMemo(() => {
+    if (!selectedCard) return undefined;
+    return cardToSplineContent({
+      card_type: selectedCard.card_type,
+      name: selectedCard.name,
+      hero_class: selectedCard.hero_class,
+      perk_1_name: selectedCard.perk_1_name,
+      perk_1_desc: selectedCard.perk_1_desc,
+      color: selectedCard.color,
+      shape: selectedCard.shape || ('circle' as any),
+      material: selectedCard.material || ('flat' as any),
+      background: selectedCard.background || ('default' as any),
+      mana_color: selectedCard.mana_color || ('yellow' as any),
+      rarity_tier: selectedCard.rarity_tier,
+      atk: selectedCard.atk ?? 0,
+      def: selectedCard.def ?? 0,
+      hp: selectedCard.hp ?? 0,
+      mana_cost: selectedCard.mana_cost ?? 0,
+      ability: selectedCard.ability,
+      card_number: selectedCard.card_number,
+      raw_art_path: selectedCard.raw_art_path,
+      artVersion,
+    });
+  }, [selectedCard?.id, selectedCard?.name, selectedCard?.raw_art_path, artVersion]);
+
   // Generate description for a single card
   const generateDescription = async (cardId: string, force = false) => {
     setGeneratingDesc(true);
@@ -715,28 +741,9 @@ export default function CardsV2Page() {
               {/* 3D Card Preview — compact */}
               <div className="bg-neutral-800 rounded-lg overflow-hidden shrink-0" style={{ width: '120px', aspectRatio: '5/7' }}>
                 <SplineCard
+                  key="admin-detail-card"
                   className="w-full h-full"
-                  cardContent={cardToSplineContent({
-                    card_type: selectedCard.card_type,
-                    name: selectedCard.name,
-                    hero_class: selectedCard.hero_class,
-                    perk_1_name: selectedCard.perk_1_name,
-                    perk_1_desc: selectedCard.perk_1_desc,
-                    color: selectedCard.color,
-                    shape: selectedCard.shape || ('circle' as any),
-                    material: selectedCard.material || ('flat' as any),
-                    background: selectedCard.background || ('default' as any),
-                    mana_color: selectedCard.mana_color || ('yellow' as any),
-                    rarity_tier: selectedCard.rarity_tier,
-                    atk: selectedCard.atk ?? 0,
-                    def: selectedCard.def ?? 0,
-                    hp: selectedCard.hp ?? 0,
-                    mana_cost: selectedCard.mana_cost ?? 0,
-                    ability: selectedCard.ability,
-                    card_number: selectedCard.card_number,
-                    raw_art_path: selectedCard.raw_art_path,
-                    artVersion,
-                  })}
+                  cardContent={splineContent}
                 />
               </div>
             </div>

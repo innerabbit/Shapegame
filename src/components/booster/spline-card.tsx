@@ -172,49 +172,45 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
     console.log(`[Spline] Card "${content.title}" — found ${textMap.size} text object names`);
   }
 
-  // Skip if content already applied (avoids duplicate work from safety-net re-apply)
+  // Skip text re-apply if title already matches (safety-net dedup),
+  // but always allow art texture updates through
   const titleObj = findTextObject(textMap, 'CardTitle', 'SHAPE');
-  if (titleObj && getTextValue(titleObj).trim() === content.title.trim()) {
-    return; // Already applied
-  }
+  const textAlreadyApplied = titleObj && getTextValue(titleObj).trim() === content.title.trim();
 
-  // Apply text fields
-  const setTextPromises: Promise<void>[] = [];
+  // Apply text fields (skip if already applied to avoid flicker)
+  if (!textAlreadyApplied) {
+    const setTextPromises: Promise<void>[] = [];
 
-  for (const field of TEXT_FIELDS) {
-    const value = content[field.contentKey] as string;
-    if (value === undefined || value === null) continue;
-    const displayValue = value || ' '; // Use space for empty to avoid layout collapse
+    for (const field of TEXT_FIELDS) {
+      const value = content[field.contentKey] as string;
+      if (value === undefined || value === null) continue;
+      const displayValue = value || ' '; // Use space for empty to avoid layout collapse
 
-    const rawObj = findTextObject(textMap, field.objectName, field.defaultHint);
-    if (!rawObj) {
-      console.warn(`[Spline] ⚠️ Text object "${field.objectName}" not found`);
-      continue;
+      const rawObj = findTextObject(textMap, field.objectName, field.defaultHint);
+      if (!rawObj) continue;
+
+      if (rawObj.textGeometry && typeof rawObj.textGeometry.setText === 'function') {
+        const p = rawObj.textGeometry
+          .setText(displayValue, sharedAssets)
+          .then(() => {
+            const render = () => {
+              if (sharedAssets?.requestRender) sharedAssets.requestRender();
+              else if (app.requestRender) app.requestRender();
+            };
+            render();
+            setTimeout(render, 200);
+          })
+          .catch((e: any) => {
+            console.warn(`[Spline] ❌ setText failed on "${field.objectName}":`, e);
+          });
+        setTextPromises.push(p);
+      }
     }
 
-    if (rawObj.textGeometry && typeof rawObj.textGeometry.setText === 'function') {
-      const p = rawObj.textGeometry
-        .setText(displayValue, sharedAssets)
-        .then(() => {
-          // Request render — text geometry may need an extra frame
-          const render = () => {
-            if (sharedAssets?.requestRender) sharedAssets.requestRender();
-            else if (app.requestRender) app.requestRender();
-          };
-          render();
-          setTimeout(render, 200);
-        })
-        .catch((e: any) => {
-          console.warn(`[Spline] ❌ setText failed on "${field.objectName}":`, e);
-        });
-      setTextPromises.push(p);
-    }
+    Promise.all(setTextPromises).then(() => {
+      console.log(`[Spline] ✅ "${content.title}" — ${setTextPromises.length} text fields applied`);
+    });
   }
-
-  // Summary log once all text fields applied
-  Promise.all(setTextPromises).then(() => {
-    console.log(`[Spline] ✅ "${content.title}" — ${setTextPromises.length} text fields applied`);
-  });
 
   // Update card art texture if URL provided
   // Load via Image with crossOrigin to make it WebGL-safe, then use canvas dataURL
@@ -356,28 +352,37 @@ export const SplineCard = forwardRef<SplineCardHandle, SplineCardProps>(
       };
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // Track whether we've applied content at least once (fonts/glyphs ready)
+    const hasAppliedRef = useRef(false);
+
     // Apply content when Spline loads or cardContent changes
-    // Delay is critical: app.load() resolves before the text rendering pipeline
-    // (fonts, glyphs) is fully initialized. Without delay, setText "succeeds"
-    // (promise resolves) but the visual doesn't update because glyphs aren't ready.
     useEffect(() => {
       if (!loaded || !appRef.current || !cardContent) return;
 
       const timers: ReturnType<typeof setTimeout>[] = [];
 
-      // First attempt — give fonts/glyphs ~800ms to initialize
-      timers.push(setTimeout(() => {
-        if (appRef.current && !disposedRef.current) {
-          applyContent(appRef.current, cardContent);
-        }
-      }, 800));
-
-      // Safety-net re-apply — catches edge cases where first apply was too early
-      timers.push(setTimeout(() => {
-        if (appRef.current && !disposedRef.current) {
-          applyContent(appRef.current, cardContent);
-        }
-      }, 2000));
+      if (!hasAppliedRef.current) {
+        // First-ever apply — fonts/glyphs need ~800ms after scene load
+        timers.push(setTimeout(() => {
+          if (appRef.current && !disposedRef.current) {
+            applyContent(appRef.current, cardContent);
+            hasAppliedRef.current = true;
+          }
+        }, 800));
+        // Safety-net for slow font init
+        timers.push(setTimeout(() => {
+          if (appRef.current && !disposedRef.current) {
+            applyContent(appRef.current, cardContent);
+          }
+        }, 2000));
+      } else {
+        // Subsequent updates — scene already warm, apply immediately
+        timers.push(setTimeout(() => {
+          if (appRef.current && !disposedRef.current) {
+            applyContent(appRef.current, cardContent);
+          }
+        }, 50));
+      }
 
       return () => timers.forEach(clearTimeout);
     }, [loaded, cardContent]);

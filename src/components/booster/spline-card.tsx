@@ -217,29 +217,40 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
   });
 
   // Update card art texture if URL provided
-  // NOTE: updateTexture() exists on the PROXY material layers, NOT on internal objects.
-  // So we use spline.findObjectByName() (public API) instead of scene.getObjectByName().
+  // Load via Image with crossOrigin to make it WebGL-safe, then use canvas dataURL
   if (content.artUrl) {
-    try {
-      const artProxy = spline.findObjectByName('CardArt');
-      if (artProxy?.material?.layers) {
-        const textureLayer = (artProxy.material as any).layers.find(
-          (l: any) => l.type === 'texture'
-        );
-        if (textureLayer && typeof textureLayer.updateTexture === 'function') {
-          textureLayer.updateTexture(content.artUrl)
-            .then(() => {
-              if (sharedAssets?.requestRender) sharedAssets.requestRender();
-              else if (app.requestRender) app.requestRender();
-            })
-            .catch((e: any) => {
-              console.warn('[Spline] ❌ CardArt texture update failed:', e);
-            });
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      const dataUrl = canvas.toDataURL('image/png');
+      try {
+        const artProxy = spline.findObjectByName('CardArt');
+        if (artProxy?.material?.layers) {
+          const textureLayer = (artProxy.material as any).layers.find(
+            (l: any) => l.type === 'texture'
+          );
+          if (textureLayer && typeof textureLayer.updateTexture === 'function') {
+            textureLayer.updateTexture(dataUrl)
+              .then(() => {
+                if (sharedAssets?.requestRender) sharedAssets.requestRender();
+                else if (app.requestRender) app.requestRender();
+                console.log('[Spline] ✅ CardArt texture applied');
+              })
+              .catch((e: any) => console.warn('[Spline] ❌ CardArt texture update failed:', e));
+          }
         }
+      } catch (e) {
+        console.warn('[Spline] ⚠️ CardArt texture error:', e);
       }
-    } catch (e) {
-      console.warn('[Spline] ⚠️ CardArt texture error:', e);
-    }
+    };
+    img.onerror = () => console.warn('[Spline] ⚠️ Art image load failed:', content.artUrl);
+    img.src = content.artUrl;
   }
 }
 

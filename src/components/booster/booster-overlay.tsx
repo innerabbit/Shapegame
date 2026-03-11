@@ -215,13 +215,11 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
 
       {/* Cards — 6 Spline 3D cards */}
       {stage === 'revealing' && (
-        <div className="absolute inset-0 z-[52] overflow-y-auto flex items-center justify-center pt-8 pb-2">
+        <div className="absolute inset-0 z-[52] flex items-center justify-center pt-10 pb-2">
           <div
             className="grid grid-cols-3 gap-0 place-items-center"
             style={{
-              '--card-w': 'calc((100vw - 4px) / 3)',
-              width: '100%',
-              maxWidth: 'calc(var(--card-w) * 3)',
+              '--card-w': 'min(calc((100vw - 4px) / 3), calc((100vh - 80px) / 2 * 5 / 7))',
             } as React.CSSProperties}
           >
             {cards.map((card, i) => (

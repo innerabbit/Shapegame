@@ -82,11 +82,11 @@ export interface BackgroundDefinition {
 }
 
 export const BACKGROUNDS: BackgroundDefinition[] = [
-  { type: 'solid_color', label: 'Solid Color',   multiplier: 1.0,  description: 'Однотонный фон, самый частый' },
-  { type: 'abstract',    label: 'Abstract Scene', multiplier: 0.8,  description: 'Геометрические паттерны, шейп в среде' },
-  { type: 'clothing',    label: 'Clothing',       multiplier: 0.5,  description: 'Фрагмент одежды/аксессуара с шейпом' },
-  { type: 'people',      label: 'People + Shape', multiplier: 0.3,  description: 'Человек держит шейп в камеру' },
-  { type: 'buildings',   label: 'Buildings',      multiplier: 0.15, description: 'Архитектура / инсталляция из шейпов' },
+  { type: 'solid_color', label: 'Solid Color',   multiplier: 1.0,  description: 'Solid color background, most common' },
+  { type: 'abstract',    label: 'Abstract Scene', multiplier: 0.8,  description: 'Geometric patterns, shape in environment' },
+  { type: 'clothing',    label: 'Clothing',       multiplier: 0.5,  description: 'Fragment of clothing/accessory with shape' },
+  { type: 'people',      label: 'People + Shape', multiplier: 0.3,  description: 'Person holding shape towards camera' },
+  { type: 'buildings',   label: 'Buildings',      multiplier: 0.15, description: 'Architecture / installation of shapes' },
 ];
 
 export const BACKGROUND_MULTIPLIERS: Record<BackgroundType, number> = {
@@ -129,23 +129,23 @@ export const MANA_COLORS: Record<ManaColor, { emoji: string; label: string; hex:
 // ── Abilities ──────────────────────────────────────────
 
 export const ABILITIES: CardAbility[] = [
-  { name: 'Burn',     description: '+2 урона цели напрямую',                manaColor: 'red',   minRarity: 'uncommon' },
-  { name: 'Shield',   description: '+3 DEF на один ход',                    manaColor: 'white', minRarity: 'uncommon' },
-  { name: 'Heal',     description: 'Восстановить 3 HP союзнику',            manaColor: 'white', minRarity: 'uncommon' },
-  { name: 'Grow',     description: '+1 ATK / +1 HP перманентно',            manaColor: 'green', minRarity: 'rare' },
-  { name: 'Counter',  description: 'Отменить способность противника',       manaColor: 'blue',  minRarity: 'rare' },
-  { name: 'Drain',    description: 'Урон = лечение себе',                   manaColor: 'blue',  minRarity: 'epic' },
-  { name: 'Combo',    description: 'Если на поле 2+ Gold карты: ×2 ATK',    manaColor: 'gold',  minRarity: 'epic' },
-  { name: 'Overload', description: 'Удар по всем картам противника',        manaColor: 'red',   minRarity: 'legendary' },
+  { name: 'Burn',     description: '+2 damage to target directly',           manaColor: 'red',   minRarity: 'uncommon' },
+  { name: 'Shield',   description: '+3 DEF for one turn',                   manaColor: 'white', minRarity: 'uncommon' },
+  { name: 'Heal',     description: 'Restore 3 HP to an ally',              manaColor: 'white', minRarity: 'uncommon' },
+  { name: 'Grow',     description: '+1 ATK / +1 HP permanently',           manaColor: 'green', minRarity: 'rare' },
+  { name: 'Counter',  description: 'Cancel an enemy ability',              manaColor: 'blue',  minRarity: 'rare' },
+  { name: 'Drain',    description: 'Damage dealt = healing to self',       manaColor: 'blue',  minRarity: 'epic' },
+  { name: 'Combo',    description: 'If 2+ Gold cards on field: x2 ATK',    manaColor: 'gold',  minRarity: 'epic' },
+  { name: 'Overload', description: 'Hit all enemy cards',                   manaColor: 'red',   minRarity: 'legendary' },
 ];
 
 // ── Generation Waves ───────────────────────────────────
 
 export const WAVES = {
-  1: { label: 'Wave 1 — Flat × Solid Color', description: '8 артов: все Flat шейпы на солид-фоне' },
-  2: { label: 'Wave 2 — Flat × Other BGs', description: '32 арта: 8 Flat шейпов × 4 фона' },
-  3: { label: 'Wave 3 — 3D × All BGs', description: '55 артов: 11 3D шейпов × 5 фонов' },
-  4: { label: 'Wave 4 — Chrome + Gold × All BGs', description: '100 артов: Chrome (60) + Gold (40)' },
+  1: { label: 'Wave 1 — Flat × Solid Color', description: '8 arts: all Flat shapes on solid background' },
+  2: { label: 'Wave 2 — Flat × Other BGs', description: '32 arts: 8 Flat shapes × 4 backgrounds' },
+  3: { label: 'Wave 3 — 3D × All BGs', description: '55 arts: 11 3D shapes × 5 backgrounds' },
+  4: { label: 'Wave 4 — Chrome + Gold × All BGs', description: '100 arts: Chrome (60) + Gold (40)' },
 } as const;
 
 // ── Gen Status labels ──────────────────────────────────
@@ -201,22 +201,22 @@ import type {
 // ── Card Colors (v2) ──────────────────────────────────
 
 export const CARD_COLORS: Record<CardColor, { emoji: string; label: string; hex: string; archetype: string; role: string }> = {
-  yellow: { emoji: '🟡', label: 'Yellow', hex: '#eab308', archetype: 'Faith / Order', role: 'Защита, хил, баффы' },
-  blue:   { emoji: '🔵', label: 'Blue',   hex: '#3b82f6', archetype: 'Tech / Control', role: 'Контроль, манипуляция' },
-  black:  { emoji: '⚫', label: 'Black',  hex: '#1f2937', archetype: 'Street / Power', role: 'Урон, жертвы, дебаффы' },
-  red:    { emoji: '🔴', label: 'Red',    hex: '#ef4444', archetype: 'Art / Chaos', role: 'Агрессия, AoE, хаос' },
-  green:  { emoji: '🟢', label: 'Green',  hex: '#22c55e', archetype: 'Sport / Force', role: 'Большие статы, рост' },
-  white:  { emoji: '⚪', label: 'White',  hex: '#e5e7eb', archetype: 'Artifacts / Weapons', role: 'Бесцветное оружие и снаряжение' },
+  yellow: { emoji: '🟡', label: 'Yellow', hex: '#eab308', archetype: 'Faith / Order', role: 'Defense, healing, buffs' },
+  blue:   { emoji: '🔵', label: 'Blue',   hex: '#3b82f6', archetype: 'Tech / Control', role: 'Control, manipulation' },
+  black:  { emoji: '⚫', label: 'Black',  hex: '#1f2937', archetype: 'Street / Power', role: 'Damage, sacrifice, debuffs' },
+  red:    { emoji: '🔴', label: 'Red',    hex: '#ef4444', archetype: 'Art / Chaos', role: 'Aggression, AoE, chaos' },
+  green:  { emoji: '🟢', label: 'Green',  hex: '#22c55e', archetype: 'Sport / Force', role: 'Big stats, growth' },
+  white:  { emoji: '⚪', label: 'White',  hex: '#e5e7eb', archetype: 'Artifacts / Weapons', role: 'Colorless weapons and equipment' },
 };
 
 // ── Hero Classes ──────────────────────────────────────
 
 export const HERO_CLASSES: Record<HeroClass, { color: CardColor; label: string; description: string }> = {
-  preacher:  { color: 'yellow', label: 'Preachers', description: 'Пасторы, проповедники, церковные лидеры' },
-  hacker:    { color: 'blue',   label: 'Hackers',   description: 'Хакеры, инженеры, техно-гики' },
-  gangster:  { color: 'black',  label: 'Gangsters', description: 'Гангстеры, дилеры, стрелки' },
-  artist:    { color: 'red',    label: 'Artists',   description: 'Рэперы, граффитисты, диджеи, MC' },
-  athlete:   { color: 'green',  label: 'Athletes',  description: 'Баскетболисты, боксёры, бегуны' },
+  preacher:  { color: 'yellow', label: 'Preachers', description: 'Pastors, preachers, church leaders' },
+  hacker:    { color: 'blue',   label: 'Hackers',   description: 'Hackers, engineers, tech geeks' },
+  gangster:  { color: 'black',  label: 'Gangsters', description: 'Gangsters, dealers, shooters' },
+  artist:    { color: 'red',    label: 'Artists',   description: 'Rappers, graffiti artists, DJs, MCs' },
+  athlete:   { color: 'green',  label: 'Athletes',  description: 'Basketball players, boxers, runners' },
 };
 
 // ── Land Shapes (v2 — 5 only) ─────────────────────────
@@ -260,55 +260,55 @@ export interface PerkDef {
 
 export const ALL_PERKS: PerkDef[] = [
   // Yellow — Preachers
-  { name: 'Sermon',       type: 'trigger',  description: 'При входе: +1 HP всем союзникам', color: 'yellow' },
-  { name: 'Blessing',     type: 'passive',  description: 'Союзники рядом получают +1 HP', color: 'yellow' },
-  { name: 'Choir Shield', type: 'trigger',  description: 'При входе: даёт щит 2 одному союзнику', color: 'yellow' },
-  { name: 'Resurrection', type: 'trigger',  description: 'При смерти: возвращает 1 Common союзника из кладбища', color: 'yellow' },
-  { name: 'Congregation', type: 'passive',  description: 'Если 3+ Yellow героя на поле — все получают +0/+1', color: 'yellow' },
-  { name: 'Forgiveness',  type: 'trigger',  description: 'Снимает дебафф с одного союзника', color: 'yellow' },
-  { name: 'Sunday Peace', type: 'trigger',  description: 'Запрещает атаку одного врага на 1 ход', color: 'yellow' },
-  { name: 'Gospel',       type: 'passive',  description: '+1 ATK если у тебя больше HP чем у противника', color: 'yellow' },
+  { name: 'Sermon',       type: 'trigger',  description: 'On enter: +1 HP to all allies', color: 'yellow' },
+  { name: 'Blessing',     type: 'passive',  description: 'Nearby allies gain +1 HP', color: 'yellow' },
+  { name: 'Choir Shield', type: 'trigger',  description: 'On enter: gives Shield 2 to one ally', color: 'yellow' },
+  { name: 'Resurrection', type: 'trigger',  description: 'On death: return 1 Common ally from graveyard', color: 'yellow' },
+  { name: 'Congregation', type: 'passive',  description: 'If 3+ Yellow heroes on field — all get +0/+1', color: 'yellow' },
+  { name: 'Forgiveness',  type: 'trigger',  description: 'Remove a debuff from one ally', color: 'yellow' },
+  { name: 'Sunday Peace', type: 'trigger',  description: 'Prevent one enemy from attacking for 1 turn', color: 'yellow' },
+  { name: 'Gospel',       type: 'passive',  description: '+1 ATK if your HP is higher than opponent\'s', color: 'yellow' },
 
   // Blue — Hackers
-  { name: 'Intercept',  type: 'trigger',  description: 'При входе: отменяет перк одного вражеского героя на 1 ход', color: 'blue' },
-  { name: 'Firewall',   type: 'passive',  description: 'Не может быть целью перков противника', color: 'blue' },
-  { name: 'Data Steal', type: 'trigger',  description: 'При входе: вытягиваешь 1 доп. карту', color: 'blue' },
-  { name: 'Overclock',  type: 'trigger',  description: 'При входе: даёт +2 ATK одному союзнику до конца хода', color: 'blue' },
-  { name: 'Backdoor',   type: 'passive',  description: 'Может атаковать напрямую, игнорируя одного защитника', color: 'blue' },
-  { name: 'Virus',      type: 'trigger',  description: 'При входе: -1 ATK случайному врагу', color: 'blue' },
-  { name: 'Reboot',     type: 'trigger',  description: 'Возвращает одного героя (своего или чужого) в руку. +2 маны если враг', color: 'blue' },
-  { name: 'Network',    type: 'passive',  description: 'Если 2+ Blue союзника на поле — тяни 1 доп. карту в начале хода', color: 'blue' },
+  { name: 'Intercept',  type: 'trigger',  description: 'On enter: disable one enemy perk for 1 turn', color: 'blue' },
+  { name: 'Firewall',   type: 'passive',  description: 'Cannot be targeted by enemy perks', color: 'blue' },
+  { name: 'Data Steal', type: 'trigger',  description: 'On enter: draw 1 extra card', color: 'blue' },
+  { name: 'Overclock',  type: 'trigger',  description: 'On enter: +2 ATK to one ally until end of turn', color: 'blue' },
+  { name: 'Backdoor',   type: 'passive',  description: 'Can attack directly, ignoring one defender', color: 'blue' },
+  { name: 'Virus',      type: 'trigger',  description: 'On enter: -1 ATK to a random enemy', color: 'blue' },
+  { name: 'Reboot',     type: 'trigger',  description: 'Return one hero (yours or enemy\'s) to hand. +2 mana if enemy', color: 'blue' },
+  { name: 'Network',    type: 'passive',  description: 'If 2+ Blue allies on field — draw 1 extra card at turn start', color: 'blue' },
 
   // Black — Gangsters
-  { name: 'Drive-By',     type: 'trigger',  description: 'При входе: наносит 2 урона случайному врагу', color: 'black' },
-  { name: 'Intimidate',   type: 'passive',  description: 'Враги с ATK меньше не могут блокировать', color: 'black' },
-  { name: 'Blood Money',  type: 'trigger',  description: 'Убей своего союзника — получи +2 маны любого цвета', color: 'black' },
-  { name: 'Double Tap',   type: 'passive',  description: 'Наносит базовый ATK дважды', color: 'black' },
-  { name: 'Shakedown',    type: 'trigger',  description: 'При входе: противник сбрасывает 1 карту (1 раз за ход)', color: 'black' },
-  { name: 'Bulletproof',  type: 'passive',  description: 'Первый полученный урон за ход игнорируется', color: 'black' },
-  { name: 'Snitch',       type: 'trigger',  description: 'При смерти: наносит 1 урон всем врагам', color: 'black' },
-  { name: 'Kingpin',      type: 'passive',  description: '+1 ATK за каждого мёртвого героя, max +3', color: 'black' },
+  { name: 'Drive-By',     type: 'trigger',  description: 'On enter: deal 2 damage to a random enemy', color: 'black' },
+  { name: 'Intimidate',   type: 'passive',  description: 'Enemies with lower ATK cannot block', color: 'black' },
+  { name: 'Blood Money',  type: 'trigger',  description: 'Kill your ally — gain +2 mana of any color', color: 'black' },
+  { name: 'Double Tap',   type: 'passive',  description: 'Deals base ATK twice (bonuses apply once)', color: 'black' },
+  { name: 'Shakedown',    type: 'trigger',  description: 'On enter: opponent discards 1 card (once per turn)', color: 'black' },
+  { name: 'Bulletproof',  type: 'passive',  description: 'First damage taken each turn is ignored', color: 'black' },
+  { name: 'Snitch',       type: 'trigger',  description: 'On death: deal 1 damage to all enemies', color: 'black' },
+  { name: 'Kingpin',      type: 'passive',  description: '+1 ATK per dead hero (yours and enemy\'s), max +3', color: 'black' },
 
   // Red — Artists
-  { name: 'Freestyle',   type: 'trigger',  description: 'При входе: наносит 1 урон каждому врагу', color: 'red' },
-  { name: 'Hype',        type: 'passive',  description: '+2 ATK в ход когда сыграл 2+ карты', color: 'red' },
-  { name: 'Mixtape',     type: 'trigger',  description: 'При входе: вытяни 2 карты, сбрось 1', color: 'red' },
-  { name: 'Tag',         type: 'trigger',  description: 'При входе: помечает врага — +1 урон от всех источников', color: 'red' },
-  { name: 'Encore',      type: 'trigger',  description: 'При смерти: возвращается в руку (1 раз за игру)', color: 'red' },
-  { name: 'Beat Drop',   type: 'trigger',  description: 'При входе: все герои (свои и чужие) получают 1 урон', color: 'red' },
-  { name: 'Flow State',  type: 'passive',  description: 'Haste — может атаковать в ход выхода', color: 'red' },
-  { name: 'Cypher',      type: 'passive',  description: 'Если есть другой Red союзник — оба +1 ATK', color: 'red' },
-  { name: 'Diss Track',  type: 'trigger',  description: 'При входе: 2 урона напрямую игроку', color: 'red' },
+  { name: 'Freestyle',   type: 'trigger',  description: 'On enter: deal 1 damage to each enemy', color: 'red' },
+  { name: 'Hype',        type: 'passive',  description: '+2 ATK on turns when you play 2+ cards', color: 'red' },
+  { name: 'Mixtape',     type: 'trigger',  description: 'On enter: draw 2 cards, discard 1', color: 'red' },
+  { name: 'Tag',         type: 'trigger',  description: 'On enter: mark an enemy — it takes +1 damage from all sources', color: 'red' },
+  { name: 'Encore',      type: 'trigger',  description: 'On death: return to hand (once per game)', color: 'red' },
+  { name: 'Beat Drop',   type: 'trigger',  description: 'On enter: all heroes (yours and enemy\'s) take 1 damage', color: 'red' },
+  { name: 'Flow State',  type: 'passive',  description: 'Haste — can attack on the turn it enters', color: 'red' },
+  { name: 'Cypher',      type: 'passive',  description: 'If another Red ally is present — both get +1 ATK', color: 'red' },
+  { name: 'Diss Track',  type: 'trigger',  description: 'On enter: 2 damage directly to the opponent player', color: 'red' },
 
   // Green — Athletes
-  { name: 'Slam Dunk',   type: 'trigger',  description: 'При входе: урон = своему ATK одному врагу', color: 'green' },
-  { name: 'Endurance',   type: 'passive',  description: '+1 HP в начале каждого хода', color: 'green' },
-  { name: 'Coach',       type: 'passive',  description: 'Все Green союзники получают +1/+0', color: 'green' },
-  { name: 'Sprint',      type: 'trigger',  description: 'При входе: получает +2 ATK до конца хода', color: 'green' },
-  { name: 'Iron Jaw',    type: 'passive',  description: 'Получает максимум 3 урона за удар', color: 'green' },
-  { name: 'Teamwork',    type: 'passive',  description: '+1/+1 если на поле 2+ Green героя', color: 'green' },
-  { name: 'Second Wind', type: 'trigger',  description: 'При падении до 1 HP: полностью восстанавливает здоровье (1 раз)', color: 'green' },
-  { name: 'MVP',         type: 'passive',  description: 'Если единственный герой на поле — +3/+3. Отключается навсегда при появлении второго', color: 'green' },
+  { name: 'Slam Dunk',   type: 'trigger',  description: 'On enter: deal damage equal to own ATK to one enemy', color: 'green' },
+  { name: 'Endurance',   type: 'passive',  description: '+1 HP at the start of each turn', color: 'green' },
+  { name: 'Coach',       type: 'passive',  description: 'All Green allies get +1/+0', color: 'green' },
+  { name: 'Sprint',      type: 'trigger',  description: 'On enter: +2 ATK until end of turn', color: 'green' },
+  { name: 'Iron Jaw',    type: 'passive',  description: 'Takes max 3 damage per hit', color: 'green' },
+  { name: 'Teamwork',    type: 'passive',  description: '+1/+1 if 2+ Green heroes on field', color: 'green' },
+  { name: 'Second Wind', type: 'trigger',  description: 'When dropping to 1 HP: fully restore health (once)', color: 'green' },
+  { name: 'MVP',         type: 'passive',  description: 'If only hero on your field — +3/+3. Disabled permanently if a second hero appears', color: 'green' },
 ];
 
 // ── Artifacts (10) ────────────────────────────────────
@@ -322,16 +322,16 @@ export interface ArtifactDef {
 }
 
 export const ARTIFACTS: ArtifactDef[] = [
-  { name: 'Switchblade',  subtype: 'equipment',   rarity: 'common',    effect: '+1 ATK экипированному герою', genericCost: 1 },
-  { name: 'Bandana',      subtype: 'equipment',   rarity: 'common',    effect: '+1 HP экипированному герою', genericCost: 1 },
-  { name: 'Glock',        subtype: 'consumable',  rarity: 'uncommon',  effect: 'При входе: 2 урона случайному вражескому герою', genericCost: 2 },
-  { name: 'Boombox',      subtype: 'equipment',   rarity: 'uncommon',  effect: 'Все союзники +0/+1 пока на поле', genericCost: 2 },
-  { name: 'Kevlar Vest',  subtype: 'equipment',   rarity: 'rare',      effect: 'Экипированный герой: входящий урон -1 (min 1)', genericCost: 3 },
-  { name: 'Chains',       subtype: 'consumable',  rarity: 'rare',      effect: 'При входе: один враг не атакует 1 ход', genericCost: 3 },
-  { name: 'Molotov',      subtype: 'consumable',  rarity: 'epic',      effect: 'При входе: 2 урона всем вражеским героям', genericCost: 4 },
-  { name: 'Gold Chain',   subtype: 'equipment',   rarity: 'epic',      effect: 'В начале хода: +1 мана любого цвета', genericCost: 4 },
-  { name: 'Sawed-Off',    subtype: 'equipment',   rarity: 'legendary', effect: 'Экипированный герой наносит базовый ATK дважды', genericCost: 5 },
-  { name: 'Crown',        subtype: 'equipment',   rarity: 'legendary', effect: '+2/+2, не может быть целью перков противника', genericCost: 5 },
+  { name: 'Switchblade',  subtype: 'equipment',   rarity: 'common',    effect: '+1 ATK to equipped hero', genericCost: 1 },
+  { name: 'Bandana',      subtype: 'equipment',   rarity: 'common',    effect: '+1 HP to equipped hero', genericCost: 1 },
+  { name: 'Glock',        subtype: 'consumable',  rarity: 'uncommon',  effect: 'On enter: 2 damage to a random enemy hero', genericCost: 2 },
+  { name: 'Boombox',      subtype: 'equipment',   rarity: 'uncommon',  effect: 'All allies +0/+1 while on field', genericCost: 2 },
+  { name: 'Kevlar Vest',  subtype: 'equipment',   rarity: 'rare',      effect: 'Equipped hero: incoming damage -1 (min 1)', genericCost: 3 },
+  { name: 'Chains',       subtype: 'consumable',  rarity: 'rare',      effect: 'On enter: one enemy can\'t attack for 1 turn', genericCost: 3 },
+  { name: 'Molotov',      subtype: 'consumable',  rarity: 'epic',      effect: 'On enter: 2 damage to all enemy heroes', genericCost: 4 },
+  { name: 'Gold Chain',   subtype: 'equipment',   rarity: 'epic',      effect: 'At turn start: +1 mana of any color', genericCost: 4 },
+  { name: 'Sawed-Off',    subtype: 'equipment',   rarity: 'legendary', effect: 'Equipped hero deals base ATK twice', genericCost: 5 },
+  { name: 'Crown',        subtype: 'equipment',   rarity: 'legendary', effect: '+2/+2, cannot be targeted by enemy perks', genericCost: 5 },
 ];
 
 // ── Hero stat ranges by rarity (ATK + HP only, no DEF) ──

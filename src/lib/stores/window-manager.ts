@@ -9,14 +9,16 @@ export interface WindowState {
   isOpen: boolean;
   isMinimized: boolean;
   zIndex: number;
+  x: number;
+  y: number;
 }
 
-const WINDOW_DEFS: Omit<WindowState, 'isOpen' | 'isMinimized' | 'zIndex'>[] = [
-  { id: 'onboarding', title: 'Welcome', icon: '🏠' },
-  { id: 'shop', title: 'Shop', icon: '🛒' },
-  { id: 'collection', title: 'Collection', icon: '🃏' },
-  { id: 'decks', title: 'Deck Builder', icon: '📋' },
-  { id: 'leaderboard', title: 'Leaderboard', icon: '🏆' },
+const WINDOW_DEFS: { id: WindowId; title: string; icon: string; x: number; y: number }[] = [
+  { id: 'onboarding', title: 'Welcome', icon: '🏠', x: 60, y: 20 },
+  { id: 'shop', title: 'Shop', icon: '🛒', x: 80, y: 35 },
+  { id: 'collection', title: 'Collection', icon: '🃏', x: 100, y: 15 },
+  { id: 'decks', title: 'Deck Builder', icon: '📋', x: 120, y: 40 },
+  { id: 'leaderboard', title: 'Leaderboard', icon: '🏆', x: 140, y: 25 },
 ];
 
 interface WindowManagerStore {
@@ -29,21 +31,22 @@ interface WindowManagerStore {
   minimizeWindow: (id: WindowId) => void;
   focusWindow: (id: WindowId) => void;
   toggleWindow: (id: WindowId) => void;
+  moveWindow: (id: WindowId, x: number, y: number) => void;
 }
 
 function getInitialWindows(): WindowState[] {
-  return WINDOW_DEFS.map((def) => ({
+  return WINDOW_DEFS.map((def, i) => ({
     ...def,
-    isOpen: false,
+    isOpen: true,
     isMinimized: false,
-    zIndex: 10,
+    zIndex: 10 + i,
   }));
 }
 
 export const useWindowManager = create<WindowManagerStore>((set, get) => ({
   windows: getInitialWindows(),
-  focusedWindow: null,
-  nextZIndex: 11,
+  focusedWindow: 'leaderboard',
+  nextZIndex: 16,
 
   openWindow: (id) => {
     const { nextZIndex } = get();
@@ -61,7 +64,6 @@ export const useWindowManager = create<WindowManagerStore>((set, get) => ({
       const newWindows = state.windows.map((w) =>
         w.id === id ? { ...w, isOpen: false, isMinimized: false } : w,
       );
-      // If we closed the focused window, focus the top-most remaining open window
       let newFocused = state.focusedWindow === id ? null : state.focusedWindow;
       if (newFocused === null) {
         const openWindows = newWindows
@@ -100,7 +102,6 @@ export const useWindowManager = create<WindowManagerStore>((set, get) => ({
     }));
   },
 
-  // Taskbar click: focused → minimize; minimized → restore+focus; closed → open+focus
   toggleWindow: (id) => {
     const { focusedWindow } = get();
     const win = get().windows.find((w) => w.id === id);
@@ -115,5 +116,13 @@ export const useWindowManager = create<WindowManagerStore>((set, get) => ({
     } else {
       get().focusWindow(id);
     }
+  },
+
+  moveWindow: (id, x, y) => {
+    set((state) => ({
+      windows: state.windows.map((w) =>
+        w.id === id ? { ...w, x, y } : w,
+      ),
+    }));
   },
 }));

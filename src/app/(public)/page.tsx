@@ -21,21 +21,13 @@ export default function HomePage() {
   const windows = useWindowManager((s) => s.windows);
   const hasAnyOpen = windows.some((w) => w.isOpen);
 
-  // On mount: open window from hash or default to onboarding
+  // On mount: focus window from hash (all windows start open)
   useEffect(() => {
-    const { openWindow } = useWindowManager.getState();
+    const { focusWindow } = useWindowManager.getState();
     const hash = window.location.hash.replace('#', '');
     const windowId = HASH_TO_WINDOW[hash];
-
     if (windowId) {
-      openWindow(windowId);
-    } else {
-      const onboardingCompleted = localStorage.getItem('sc_onboarding_done');
-      if (onboardingCompleted) {
-        openWindow('shop');
-      } else {
-        openWindow('onboarding');
-      }
+      focusWindow(windowId);
     }
   }, []);
 

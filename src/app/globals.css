@@ -506,18 +506,15 @@
 
 .xp-managed-window {
   position: absolute;
-  /* Mobile: full screen */
-  inset: 0;
+  /* Mobile: full screen, ignore inline left/top */
+  inset: 0 !important;
   display: flex;
   flex-direction: column;
 }
 
 @media (min-width: 768px) {
   .xp-managed-window {
-    inset: auto;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    inset: auto !important;
     width: min(85vw, 900px);
     height: min(80vh, 700px);
   }

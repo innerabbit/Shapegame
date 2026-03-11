@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef, useCallback, useEffect } from 'react';
 import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
 
 interface XpManagedWindowProps {
@@ -24,19 +24,59 @@ export function XpManagedWindow({
   const minimizeWindow = useWindowManager((s) => s.minimizeWindow);
   const focusWindow = useWindowManager((s) => s.focusWindow);
 
+  const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    // Only drag from title bar itself, not buttons
+    if ((e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    dragRef.current = { startX: e.clientX, startY: e.clientY, origX: win.x, origY: win.y };
+    if (!focused) focusWindow(windowId);
+  }, [win.x, win.y, focused, focusWindow, windowId]);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return;
+    const dx = e.clientX - dragRef.current.startX;
+    const dy = e.clientY - dragRef.current.startY;
+    useWindowManager.getState().moveWindow(windowId, dragRef.current.origX + dx, dragRef.current.origY + dy);
+  }, [windowId]);
+
+  const onPointerUp = useCallback(() => {
+    dragRef.current = null;
+  }, []);
+
+  // Clean up drag if component unmounts mid-drag
+  useEffect(() => {
+    return () => { dragRef.current = null; };
+  }, []);
+
   if (!win.isOpen || win.isMinimized) return null;
+
+  // On mobile, ignore stored position (CSS handles full-screen)
+  const positionStyle: React.CSSProperties = {
+    zIndex: win.zIndex,
+    left: win.x,
+    top: win.y,
+  };
 
   return (
     <div
       className={`xp-managed-window ${focused ? 'xp-managed-window-focused' : 'xp-managed-window-blur'}`}
-      style={{ zIndex: win.zIndex }}
+      style={positionStyle}
       onMouseDown={() => {
         if (!focused) focusWindow(windowId);
       }}
     >
       <div className="xp-window h-full flex flex-col">
-        {/* Title bar */}
-        <div className={`xp-title-bar shrink-0 ${!focused ? 'xp-title-bar-inactive' : ''}`}>
+        {/* Title bar — draggable */}
+        <div
+          className={`xp-title-bar shrink-0 ${!focused ? 'xp-title-bar-inactive' : ''}`}
+          style={{ cursor: 'grab', touchAction: 'none' }}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+        >
           <div className="flex items-center gap-[6px] min-w-0">
             <span className="text-sm shrink-0">{win.icon}</span>
             <span className="xp-title-text">{win.title}</span>

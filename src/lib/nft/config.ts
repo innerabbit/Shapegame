@@ -1,5 +1,5 @@
 // NFT minting configuration
-// All values configurable via env, with sensible defaults for devnet testing
+// All values configurable via env
 
 /** Metaplex Core Collection mint address */
 export const COLLECTION_ADDRESS = process.env.NEXT_PUBLIC_COLLECTION_ADDRESS || '';

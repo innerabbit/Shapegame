@@ -46,7 +46,7 @@ export async function POST() {
   }
 
   // 2. Balance check
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
   const connection = new Connection(rpcUrl, 'confirmed');
   let balance = 0;
   try {

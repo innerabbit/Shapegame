@@ -15,7 +15,8 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplCore, createCollection } from '@metaplex-foundation/mpl-core';
 import { createSignerFromKeypair, generateSigner, signerIdentity } from '@metaplex-foundation/umi';
 import bs58 from 'bs58';
-import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local' });
 
 async function main() {
   const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
@@ -42,9 +43,8 @@ async function main() {
   const balance = await umi.rpc.getBalance(signer.publicKey);
   console.log(`Balance: ${Number(balance.basisPoints) / 1e9} SOL`);
 
-  if (Number(balance.basisPoints) < 50_000_000) {
-    console.error('Need at least 0.05 SOL. Request devnet airdrop:');
-    console.error(`  solana airdrop 1 ${signer.publicKey} --url devnet`);
+  if (Number(balance.basisPoints) < 10_000_000) {
+    console.error('Need at least 0.01 SOL to create the collection.');
     process.exit(1);
   }
 

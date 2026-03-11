@@ -230,7 +230,7 @@ export function MintContent() {
             </div>
             <div className="border border-[#c3c0b6] bg-white px-2 py-1">
               <span className="text-[#888]">Network:</span>{' '}
-              <span className="font-bold">Solana (devnet)</span>
+              <span className="font-bold">Solana</span>
             </div>
           </div>
         </fieldset>
@@ -352,7 +352,7 @@ export function MintContent() {
                   {txSignatures.map((sig, i) => (
                     <a
                       key={sig}
-                      href={`https://solscan.io/tx/${sig}?cluster=devnet`}
+                      href={`https://solscan.io/tx/${sig}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block text-[#003399] underline mt-1"

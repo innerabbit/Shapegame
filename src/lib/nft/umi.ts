@@ -8,12 +8,12 @@ let _umi: Umi | null = null;
 /**
  * Server-side Umi singleton.
  * Uses MINT_AUTHORITY_SECRET_KEY as the identity (collection authority).
- * RPC endpoint defaults to devnet, override with SOLANA_RPC_URL.
+ * RPC endpoint configured via SOLANA_RPC_URL env var.
  */
 export function getUmi(): Umi {
   if (_umi) return _umi;
 
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
   const secretKey = process.env.MINT_AUTHORITY_SECRET_KEY;
 
   if (!secretKey) {

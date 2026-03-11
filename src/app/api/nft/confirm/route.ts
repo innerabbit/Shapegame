@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+  const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
   const connection = new Connection(rpcUrl, 'confirmed');
 
   // Verify each transaction on-chain

@@ -385,7 +385,7 @@ export default function CardsV2Page() {
           <p className="mt-3 text-xs text-neutral-500">Loading prompts...</p>
         ) : (
           <div className="mt-3 space-y-4">
-            {(['base', 'hero', 'land', 'artifact'] as const).map(slug => {
+            {(['image_style', 'base', 'hero', 'land', 'artifact'] as const).map(slug => {
               const p = prompts[slug];
               if (!p) return null;
               const draft = promptDrafts[slug] ?? p.content;
@@ -405,7 +405,12 @@ export default function CardsV2Page() {
                     className="w-full bg-neutral-800 text-sm rounded-lg p-3 border border-neutral-700 font-mono text-neutral-200 resize-y"
                     placeholder={`${slug} prompt template...`}
                   />
-                  {slug !== 'base' && (
+                  {slug === 'image_style' && (
+                    <p className="text-[10px] text-neutral-600">
+                      Prepended to art_description when generating images. No variables.
+                    </p>
+                  )}
+                  {!['base', 'image_style'].includes(slug) && (
                     <p className="text-[10px] text-neutral-600">
                       Variables: {'{{name}} {{color}} {{rarity_tier}} {{rarity_scale}}'}{' '}
                       {slug === 'hero' && '{{hero_class}} {{class_context}} {{atk}} {{hp}} {{perk_1_name}} {{perk_1_desc}} {{perk_2_line}}'}

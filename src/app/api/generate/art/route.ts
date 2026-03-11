@@ -19,6 +19,34 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // ── 0. Load base style prompt from Supabase ──────────────
+  const supabaseForPrompts = createAdminClient();
+  let baseStylePrompt = '';
+  try {
+    const { data: baseRow } = await supabaseForPrompts
+      .from('prompts')
+      .select('content')
+      .eq('slug', 'image_style')
+      .single();
+    if (baseRow?.content) {
+      baseStylePrompt = baseRow.content;
+    } else {
+      // Fallback to 'base' prompt if 'image_style' doesn't exist
+      const { data: fallbackRow } = await supabaseForPrompts
+        .from('prompts')
+        .select('content')
+        .eq('slug', 'base')
+        .single();
+      if (fallbackRow?.content) baseStylePrompt = fallbackRow.content;
+    }
+  } catch {
+    // No prompts table — continue without base prompt
+  }
+
+  const fullPrompt = baseStylePrompt
+    ? `${baseStylePrompt}\n\nNow generate an image for this card:\n\n${prompt}`
+    : prompt;
+
   // ── 1. Call Gemini API (always — this is the core) ──────
   let imageBase64: string;
   let mimeType: string;
@@ -31,7 +59,7 @@ export async function POST(request: NextRequest) {
       try {
         response = await ai.models.generateContent({
           model: 'gemini-3.1-flash-image-preview',
-          contents: prompt,
+          contents: fullPrompt,
           config: {
             responseModalities: ['IMAGE'],
             imageConfig: { aspectRatio: '4:3' },
@@ -192,6 +220,7 @@ export async function POST(request: NextRequest) {
     .from('cards')
     .update({
       raw_art_path: filePath,
+      art_prompt: fullPrompt,
       gen_status: 'generated',
       generated_at: new Date().toISOString(),
     })

@@ -118,7 +118,7 @@ export async function POST(request: NextRequest) {
       const prompt = buildDescriptionPrompt(card);
 
       const response = await ai.models.generateContent({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-2.5-flash-lite',
         contents: prompt,
       });
 

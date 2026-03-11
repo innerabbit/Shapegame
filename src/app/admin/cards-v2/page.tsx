@@ -519,7 +519,7 @@ export default function CardsV2Page() {
                 <h4 className="text-sm font-medium text-neutral-300">Art</h4>
                 <div className="bg-neutral-800 rounded overflow-hidden">
                   <img
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/raw-arts/${selectedCard.raw_art_path}`}
+                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/raw-arts/${selectedCard.raw_art_path.replace(/^raw-arts\//, '')}`}
                     alt={selectedCard.name}
                     className="w-full aspect-[4/3] object-cover"
                   />
@@ -528,14 +528,36 @@ export default function CardsV2Page() {
             )}
 
             {/* Generate Art Button */}
-            {selectedCard.art_description && !selectedCard.raw_art_path && (
+            {selectedCard.art_description && (
               <button
-                className="w-full bg-purple-600 hover:bg-purple-500 text-white py-2 rounded text-sm font-medium"
-                onClick={() => {
-                  toast.info('Art generation via existing Generate page — navigate there with this card selected');
+                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-neutral-700 text-white py-2 rounded text-sm font-medium"
+                disabled={generatingDesc}
+                onClick={async () => {
+                  setGeneratingDesc(true);
+                  try {
+                    const res = await fetch('/api/generate/art', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        cardId: selectedCard.id,
+                        prompt: selectedCard.art_description,
+                      }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      toast.success('Art generated!');
+                      await fetchCards();
+                      setSelectedCard(prev => prev ? { ...prev, raw_art_path: data.filePath } : null);
+                    } else {
+                      toast.error(data.error || 'Art generation failed');
+                    }
+                  } catch (err) {
+                    toast.error('Network error generating art');
+                  }
+                  setGeneratingDesc(false);
                 }}
               >
-                🎨 Generate Art
+                {generatingDesc ? 'Generating Art...' : selectedCard.raw_art_path ? '🎨 Regenerate Art' : '🎨 Generate Art'}
               </button>
             )}
           </div>

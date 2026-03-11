@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 // ── POST /api/generate/art ──────────────────────────────
 // Generate card art via Gemini and optionally save to Supabase Storage
 
+export const maxDuration = 300; // 5 min — Gemini image gen is slow
+
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
 export async function POST(request: NextRequest) {
@@ -22,14 +24,32 @@ export async function POST(request: NextRequest) {
   let mimeType: string;
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.1-flash-image-preview',
-      contents: prompt,
-      config: {
-        responseModalities: ['IMAGE'],
-        imageConfig: { aspectRatio: '4:3' },
-      },
-    });
+    // Retry up to 3 times — Gemini image gen is flaky with 500s
+    let response: any;
+    let lastError: any;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-image-preview',
+          contents: prompt,
+          config: {
+            responseModalities: ['IMAGE'],
+            imageConfig: { aspectRatio: '4:3' },
+          },
+        });
+        break; // success
+      } catch (retryErr: any) {
+        lastError = retryErr;
+        const msg = retryErr?.message ?? '';
+        // Only retry on 500/503 internal errors
+        if (msg.includes('500') || msg.includes('INTERNAL') || msg.includes('503') || msg.includes('UNAVAILABLE') || msg.includes('fetch failed')) {
+          await new Promise(r => setTimeout(r, 2000 * (attempt + 1))); // backoff
+          continue;
+        }
+        throw retryErr; // non-retryable error
+      }
+    }
+    if (!response) throw lastError;
 
     // Extract image from response
     const parts = response.candidates?.[0]?.content?.parts;
@@ -144,10 +164,14 @@ export async function POST(request: NextRequest) {
 
   // ── 3. Upload to Supabase Storage ──────────────────────
   const ext = mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
-  const fileName = `${String(card.card_number).padStart(3, '0')}_${card.shape}_${card.material}_${card.background}.${ext}`;
-  const filePath = `raw-arts/${fileName}`;
+  const namePart = (card.name || `${card.shape}_${card.material}_${card.background}`).replace(/[^a-zA-Z0-9]/g, '_').toLowerCase();
+  const fileName = `${String(card.card_number).padStart(3, '0')}_${namePart}.${ext}`;
+  const filePath = fileName;
 
   const buffer = Buffer.from(imageBase64, 'base64');
+
+  // Ensure bucket exists (idempotent)
+  await supabase.storage.createBucket('raw-arts', { public: true }).catch(() => {});
 
   const { error: uploadError } = await supabase.storage
     .from('raw-arts')

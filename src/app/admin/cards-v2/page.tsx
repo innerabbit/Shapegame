@@ -704,6 +704,7 @@ export default function CardsV2Page() {
                     ability: selectedCard.ability,
                     card_number: selectedCard.card_number,
                     raw_art_path: selectedCard.raw_art_path,
+                    artVersion,
                   })}
                 />
               </div>

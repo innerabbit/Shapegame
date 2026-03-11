@@ -7,10 +7,11 @@ import { RARITY_LABELS } from '@/lib/constants';
 import type { BackgroundType } from '@/types/cards';
 
 /** Same-origin proxy URL for card art (avoids WebGL CORS issues with Supabase Storage) */
-function fullArtUrl(path: string | null | undefined): string | undefined {
+function fullArtUrl(path: string | null | undefined, cacheBust?: number): string | undefined {
   if (!path) return undefined;
   const clean = path.replace(/^raw-arts\//, '');
-  return `/api/art-proxy?path=${encodeURIComponent(clean)}`;
+  const url = `/api/art-proxy?path=${encodeURIComponent(clean)}`;
+  return cacheBust ? `${url}&v=${cacheBust}` : url;
 }
 
 // ── Types ──────────────────────────────────────────────────────
@@ -35,6 +36,7 @@ export interface CardData {
   ability: string | null;
   card_number: number;
   raw_art_path?: string | null;
+  artVersion?: number;
 }
 
 interface CardRevealProps {
@@ -64,7 +66,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
       stats: card.card_type === 'hero' ? `${card.atk} / ${card.hp}` : '',
       manaCost: String(card.mana_cost ?? 0),
       material: typeLabel,
-      artUrl: fullArtUrl(card.raw_art_path),
+      artUrl: fullArtUrl(card.raw_art_path, card.artVersion),
     };
   }
 
@@ -77,7 +79,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
     stats: `${card.atk} / ${card.def}`,
     manaCost: String(card.mana_cost),
     material: card.material.toUpperCase(),
-    artUrl: fullArtUrl(card.raw_art_path) || `/art-${card.shape}.png`,
+    artUrl: fullArtUrl(card.raw_art_path, card.artVersion) || `/art-${card.shape}.png`,
   };
 }
 

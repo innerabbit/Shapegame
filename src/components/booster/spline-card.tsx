@@ -8,13 +8,13 @@ const SCENE_URL = 'https://prod.spline.design/fNEyIuTyKEBBMlkQ/scene.splinecode?
 // ── Types ──────────────────────────────────────────────────────
 
 export interface SplineCardContent {
-  title: string;         // shape name, e.g. "TRIANGLE"
-  description: string;   // ability text or empty string
-  cardNumber: string;    // e.g. "#042 / 03.10.2026"
+  title: string;         // card name, e.g. "PASTOR WILLIAMS" or "TRIANGLE"
+  description: string;   // perk description or ability text
+  cardNumber: string;    // e.g. "#042"
   rarity: string;        // e.g. "RARE"
-  stats: string;         // e.g. "5 / 8"
+  stats: string;         // e.g. "5 / 8" (ATK/HP for heroes, empty for others)
   manaCost: string;      // e.g. "2"
-  material: string;      // e.g. "3D"
+  material: string;      // class/type label, e.g. "PREACHER" or "3D"
   artUrl?: string;       // optional URL for card art texture
 }
 

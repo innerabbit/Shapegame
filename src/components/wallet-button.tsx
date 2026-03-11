@@ -3,10 +3,12 @@
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useCallback, useMemo } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 
 export function WalletButton() {
   const { publicKey, disconnect, connecting, connected } = useWallet();
   const { setVisible } = useWalletModal();
+  const { isAuthenticated, isSigningIn, signOut } = useAuth();
 
   const address = useMemo(() => {
     if (!publicKey) return null;
@@ -16,25 +18,31 @@ export function WalletButton() {
 
   const handleClick = useCallback(() => {
     if (connected) {
-      disconnect();
+      signOut().then(() => disconnect());
     } else {
       setVisible(true);
     }
-  }, [connected, disconnect, setVisible]);
+  }, [connected, disconnect, setVisible, signOut]);
+
+  const label = connecting
+    ? 'Connecting...'
+    : isSigningIn
+    ? 'Signing in...'
+    : null;
 
   return (
     <button
       onClick={handleClick}
-      disabled={connecting}
+      disabled={connecting || isSigningIn}
       className={`xp-button flex items-center gap-[6px] px-3 py-[2px] text-[11px] ${
         connected ? 'xp-button-primary' : ''
       }`}
     >
-      {connecting ? (
-        <span>Connecting...</span>
+      {label ? (
+        <span>{label}</span>
       ) : connected ? (
         <>
-          <span style={{ color: '#22a846', fontSize: 8 }}>&#9679;</span>
+          <span style={{ color: isAuthenticated ? '#22a846' : '#f59e0b', fontSize: 8 }}>&#9679;</span>
           <span style={{ fontFamily: 'monospace', fontSize: 10 }}>{address}</span>
         </>
       ) : (

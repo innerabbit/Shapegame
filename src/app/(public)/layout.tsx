@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { WalletProvider } from '@/components/providers/wallet-provider';
+import { AuthProvider } from '@/components/providers/auth-provider';
 import { WalletButton } from '@/components/wallet-button';
 import { Toaster } from 'sonner';
 import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
@@ -103,6 +104,7 @@ export default function PublicLayout({
 }) {
   return (
     <WalletProvider>
+      <AuthProvider>
       <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
         {/* Title bar — fixed at top */}
         <div className="xp-top-bar">
@@ -136,6 +138,7 @@ export default function PublicLayout({
           }}
         />
       </div>
+      </AuthProvider>
     </WalletProvider>
   );
 }

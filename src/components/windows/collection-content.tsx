@@ -15,6 +15,7 @@ import {
 import type { RarityTier } from '@/types/cards';
 import { XpGroupBox, XpProgress } from '@/components/xp';
 import { useWindowManager } from '@/lib/stores/window-manager';
+import { useUserCards } from '@/hooks/use-user-cards';
 
 type Tab = 'my-cards' | 'all-cards';
 type SortBy = 'number' | 'rarity' | 'atk' | 'def' | 'hp';
@@ -32,7 +33,7 @@ export function CollectionContent() {
   const [sortBy, setSortBy] = useState<SortBy>('number');
   const [selectedCard, setSelectedCard] = useState<SeedCard | null>(null);
 
-  const ownedCardNumbers = new Set<number>();
+  const { ownedCardNumbers, isLoading: ownedLoading, refetch: refetchOwned } = useUserCards();
 
   const filteredCards = useMemo(() => {
     let cards = allCards;

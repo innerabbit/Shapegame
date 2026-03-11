@@ -6,6 +6,13 @@ import type { RarityTier, ManaColor, ShapeType, MaterialType, CardType } from '@
 import { RARITY_LABELS } from '@/lib/constants';
 import type { BackgroundType } from '@/types/cards';
 
+/** Same-origin proxy URL for card art (avoids WebGL CORS issues with Supabase Storage) */
+function fullArtUrl(path: string | null | undefined): string | undefined {
+  if (!path) return undefined;
+  const clean = path.replace(/^raw-arts\//, '');
+  return `/api/art-proxy?path=${encodeURIComponent(clean)}`;
+}
+
 // ── Types ──────────────────────────────────────────────────────
 
 export interface CardData {
@@ -57,7 +64,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
       stats: card.card_type === 'hero' ? `${card.atk} / ${card.hp}` : '',
       manaCost: String(card.mana_cost ?? 0),
       material: typeLabel,
-      artUrl: card.raw_art_path || undefined,
+      artUrl: fullArtUrl(card.raw_art_path),
     };
   }
 
@@ -70,7 +77,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
     stats: `${card.atk} / ${card.def}`,
     manaCost: String(card.mana_cost),
     material: card.material.toUpperCase(),
-    artUrl: card.raw_art_path || `/art-${card.shape}.png`,
+    artUrl: fullArtUrl(card.raw_art_path) || `/art-${card.shape}.png`,
   };
 }
 

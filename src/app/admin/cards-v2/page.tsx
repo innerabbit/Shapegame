@@ -649,9 +649,28 @@ export default function CardsV2Page() {
 
             {/* Land Details */}
             {selectedCard.card_type === 'land' && (
-              <div className="text-sm text-neutral-400">
-                Shape: <span className="text-neutral-200 capitalize">{selectedCard.shape}</span> —
-                Material: <span className="text-neutral-200 capitalize">{selectedCard.material}</span>
+              <div className="space-y-2">
+                <div className="text-sm text-neutral-400">
+                  Shape: <span className="text-neutral-200 capitalize">{selectedCard.shape}</span> —
+                  Material: <span className="text-neutral-200 capitalize">{selectedCard.material}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-neutral-800 rounded p-2">
+                    <div className="text-[10px] text-neutral-500">MANA</div>
+                    <div className="text-lg">{CARD_COLORS[selectedCard.color]?.emoji} +1</div>
+                  </div>
+                  <div className="bg-neutral-800 rounded p-2">
+                    <div className="text-[10px] text-neutral-500">RARITY</div>
+                    <div className={`text-sm font-bold ${RARITY_COLORS[selectedCard.rarity_tier]?.text}`}>
+                      {RARITY_LABELS[selectedCard.rarity_tier]}
+                    </div>
+                  </div>
+                </div>
+                {selectedCard.ability && (
+                  <div className="bg-neutral-800/50 rounded p-2 text-sm text-neutral-300">
+                    {selectedCard.ability}
+                  </div>
+                )}
               </div>
             )}
 
@@ -659,8 +678,19 @@ export default function CardsV2Page() {
             {selectedCard.card_type === 'artifact' && (
               <div className="space-y-2">
                 <div className="text-sm text-neutral-400">
-                  Type: <span className="text-neutral-200 capitalize">{selectedCard.artifact_subtype}</span> —
-                  Cost: <span className="text-neutral-200">{selectedCard.mana_cost} generic</span>
+                  Type: <span className="text-neutral-200 capitalize">{selectedCard.artifact_subtype}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-center">
+                  <div className="bg-neutral-800 rounded p-2">
+                    <div className="text-[10px] text-neutral-500">COST</div>
+                    <div className="text-lg font-bold text-blue-400">{selectedCard.mana_cost} ⚪</div>
+                  </div>
+                  <div className="bg-neutral-800 rounded p-2">
+                    <div className="text-[10px] text-neutral-500">RARITY</div>
+                    <div className={`text-sm font-bold ${RARITY_COLORS[selectedCard.rarity_tier]?.text}`}>
+                      {RARITY_LABELS[selectedCard.rarity_tier]}
+                    </div>
+                  </div>
                 </div>
                 {selectedCard.ability && (
                   <div className="bg-neutral-800/50 rounded p-2 text-sm text-neutral-300">

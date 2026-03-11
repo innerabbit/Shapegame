@@ -100,11 +100,11 @@ export const BACKGROUND_MULTIPLIERS: Record<BackgroundType, number> = {
 // ── Rarity colors ──────────────────────────────────────
 
 export const RARITY_COLORS: Record<RarityTier, { bg: string; text: string; border: string }> = {
-  common:    { bg: 'bg-gray-100',    text: 'text-gray-700',    border: 'border-gray-300' },
-  uncommon:  { bg: 'bg-green-100',   text: 'text-green-700',   border: 'border-green-400' },
-  rare:      { bg: 'bg-blue-100',    text: 'text-blue-700',    border: 'border-blue-400' },
-  epic:      { bg: 'bg-purple-100',  text: 'text-purple-700',  border: 'border-purple-400' },
-  legendary: { bg: 'bg-yellow-100',  text: 'text-yellow-700',  border: 'border-yellow-400' },
+  common:    { bg: 'bg-neutral-700',   text: 'text-neutral-300',  border: 'border-neutral-500' },
+  uncommon:  { bg: 'bg-green-900/50',  text: 'text-green-400',    border: 'border-green-600' },
+  rare:      { bg: 'bg-blue-900/50',   text: 'text-blue-400',     border: 'border-blue-600' },
+  epic:      { bg: 'bg-purple-900/50', text: 'text-purple-400',   border: 'border-purple-600' },
+  legendary: { bg: 'bg-yellow-900/50', text: 'text-yellow-400',   border: 'border-yellow-600' },
 };
 
 export const RARITY_LABELS: Record<RarityTier, string> = {

@@ -481,14 +481,34 @@ export default function CardsV2Page() {
                           )}
                         </div>
                         {card.card_type === 'hero' && (
-                          <div className="text-[10px] text-neutral-400 mt-1">
-                            ATK {card.atk} / HP {card.hp} / Cost {card.mana_cost}
-                            {card.perk_1_name && <span className="ml-2 text-amber-400">{card.perk_1_name}</span>}
-                            {card.perk_2_name && <span className="ml-1 text-amber-400">+ {card.perk_2_name}</span>}
+                          <div className="mt-1.5 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] bg-red-900/40 text-red-300 px-1.5 rounded">ATK {card.atk}</span>
+                              <span className="text-[10px] bg-green-900/40 text-green-300 px-1.5 rounded">HP {card.hp}</span>
+                              <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 rounded">Cost {card.mana_cost}</span>
+                            </div>
+                            {card.perk_1_name && (
+                              <div className="text-[10px] text-amber-400 truncate">
+                                {card.perk_1_name}{card.perk_2_name ? ` + ${card.perk_2_name}` : ''}
+                              </div>
+                            )}
                           </div>
                         )}
-                        {card.card_type === 'artifact' && card.ability && (
-                          <div className="text-[10px] text-neutral-400 mt-1 truncate">{card.ability}</div>
+                        {card.card_type === 'land' && (
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[10px] text-neutral-500 capitalize">{card.shape}</span>
+                            <span className="text-[10px] text-neutral-600">/</span>
+                            <span className="text-[10px] text-neutral-500 capitalize">{card.material}</span>
+                          </div>
+                        )}
+                        {card.card_type === 'artifact' && (
+                          <div className="mt-1.5 space-y-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-neutral-500 capitalize">{card.artifact_subtype}</span>
+                              <span className="text-[10px] bg-blue-900/40 text-blue-300 px-1.5 rounded">Cost {card.mana_cost}</span>
+                            </div>
+                            {card.ability && <div className="text-[10px] text-neutral-400 truncate">{card.ability}</div>}
+                          </div>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-0.5 shrink-0">
@@ -689,25 +709,36 @@ export default function CardsV2Page() {
               </div>
             </div>
 
-            {/* Art Description */}
+            {/* Art Description (text prompt for image generation) */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-neutral-300">Art Description</h4>
+                <h4 className="text-sm font-medium text-neutral-300">
+                  Art Description <span className="text-[10px] text-neutral-600 font-normal ml-1">text prompt for image gen</span>
+                </h4>
                 <div className="flex gap-1">
                   {selectedCard.art_description && !editingDesc && (
-                    <button
-                      onClick={() => { setEditingDesc(true); setDescDraft(selectedCard.art_description || ''); }}
-                      className="text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      Edit
-                    </button>
+                    <>
+                      <button
+                        onClick={() => { setEditingDesc(true); setDescDraft(selectedCard.art_description || ''); }}
+                        className="text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => saveDescription(selectedCard.id, '')}
+                        className="text-xs text-red-400 hover:text-red-300"
+                        title="Clear description"
+                      >
+                        Clear
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={() => generateDescription(selectedCard.id, !!selectedCard.art_description)}
                     disabled={generatingDesc}
                     className="text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-neutral-700 text-white px-2 py-0.5 rounded"
                   >
-                    {generatingDesc ? 'Generating...' : selectedCard.art_description ? 'Regenerate' : 'Generate'}
+                    {generatingDesc ? 'Generating...' : selectedCard.art_description ? 'Regen Description' : 'Generate Description'}
                   </button>
                 </div>
               </div>

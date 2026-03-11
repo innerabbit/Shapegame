@@ -133,7 +133,7 @@ export function BoosterOverlay({ onClose }: BoosterOverlayProps) {
     null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-sm">
 
       {/* Particles */}
       <PackParticles active={showParticles} />

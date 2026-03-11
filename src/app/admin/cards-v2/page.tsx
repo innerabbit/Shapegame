@@ -14,6 +14,12 @@ import { cardToSplineContent } from '@/components/booster/card-reveal';
 
 type FilterStatus = 'all' | 'no-description' | 'no-art' | 'complete';
 
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+function artUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  return `${SUPABASE_URL}/storage/v1/object/public/raw-arts/${path.replace(/^raw-arts\//, '')}`;
+}
+
 export default function CardsV2Page() {
   const [cards, setCards] = useState<CardV2[]>([]);
   const [loading, setLoading] = useState(true);
@@ -35,6 +41,8 @@ export default function CardsV2Page() {
   // Editing
   const [editingDesc, setEditingDesc] = useState(false);
   const [descDraft, setDescDraft] = useState('');
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +143,25 @@ export default function CardsV2Page() {
       if (selectedCard?.id === cardId) {
         setSelectedCard(prev => prev ? { ...prev, art_description: desc } : null);
       }
+    }
+  };
+
+  // Save edited name
+  const saveName = async (cardId: string, newName: string) => {
+    const res = await fetch('/api/cards/' + cardId + '/status', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newName }),
+    });
+    if (res.ok) {
+      toast.success('Name saved');
+      setEditingName(false);
+      await fetchCards();
+      if (selectedCard?.id === cardId) {
+        setSelectedCard(prev => prev ? { ...prev, name: newName } : null);
+      }
+    } else {
+      toast.error('Failed to save name');
     }
   };
 
@@ -405,68 +432,142 @@ export default function CardsV2Page() {
         {/* Card List */}
         <div className={`flex-1 ${selectedCard ? 'max-w-[55%]' : ''}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {filteredCards.map(card => (
-              <button
-                key={card.id}
-                onClick={() => {
-                  setSelectedCard(card);
-                  setEditingDesc(false);
-                }}
-                className={`text-left p-3 rounded-lg border transition-colors ${
-                  selectedCard?.id === card.id
-                    ? 'border-blue-500 bg-blue-950/30'
-                    : 'border-neutral-800 bg-neutral-900 hover:border-neutral-600'
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs">{typeIcon(card.card_type)}</span>
-                      <span className="text-sm font-medium truncate">{card.name}</span>
+            {filteredCards.map(card => {
+              const thumb = artUrl(card.raw_art_path);
+              return (
+                <div
+                  key={card.id}
+                  onClick={() => {
+                    setSelectedCard(card);
+                    setEditingDesc(false);
+                    setEditingName(false);
+                  }}
+                  className={`text-left rounded-lg border transition-colors cursor-pointer overflow-hidden ${
+                    selectedCard?.id === card.id
+                      ? 'border-blue-500 bg-blue-950/30'
+                      : 'border-neutral-800 bg-neutral-900 hover:border-neutral-600'
+                  }`}
+                >
+                  {/* Art thumbnail */}
+                  {thumb ? (
+                    <div className="w-full h-20 bg-neutral-800">
+                      <img src={thumb} alt="" className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-neutral-500">#{String(card.card_number).padStart(3, '0')}</span>
-                      <span className="text-[10px]">{CARD_COLORS[card.color]?.emoji}</span>
-                      <span className={`text-[10px] px-1.5 py-0 rounded ${RARITY_COLORS[card.rarity_tier]?.bg} ${RARITY_COLORS[card.rarity_tier]?.text}`}>
-                        {RARITY_LABELS[card.rarity_tier]}
-                      </span>
-                      {card.hero_class && (
-                        <span className="text-[10px] text-neutral-500 capitalize">{card.hero_class}</span>
-                      )}
-                    </div>
-                    {card.card_type === 'hero' && (
-                      <div className="text-[10px] text-neutral-400 mt-1">
-                        ATK {card.atk} / HP {card.hp} / Cost {card.mana_cost}
-                        {card.perk_1_name && <span className="ml-2 text-amber-400">{card.perk_1_name}</span>}
-                        {card.perk_2_name && <span className="ml-1 text-amber-400">+ {card.perk_2_name}</span>}
+                  ) : (
+                    <div className="w-full h-4 bg-neutral-800/50" />
+                  )}
+                  <div className="p-2.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">{typeIcon(card.card_type)}</span>
+                          <span className="text-sm font-medium truncate">{card.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] text-neutral-500">#{String(card.card_number).padStart(3, '0')}</span>
+                          <span className="text-[10px]">{CARD_COLORS[card.color]?.emoji}</span>
+                          <span className={`text-[10px] px-1.5 py-0 rounded ${RARITY_COLORS[card.rarity_tier]?.bg} ${RARITY_COLORS[card.rarity_tier]?.text}`}>
+                            {RARITY_LABELS[card.rarity_tier]}
+                          </span>
+                          {card.hero_class && (
+                            <span className="text-[10px] text-neutral-500 capitalize">{card.hero_class}</span>
+                          )}
+                        </div>
+                        {card.card_type === 'hero' && (
+                          <div className="text-[10px] text-neutral-400 mt-1">
+                            ATK {card.atk} / HP {card.hp} / Cost {card.mana_cost}
+                            {card.perk_1_name && <span className="ml-2 text-amber-400">{card.perk_1_name}</span>}
+                            {card.perk_2_name && <span className="ml-1 text-amber-400">+ {card.perk_2_name}</span>}
+                          </div>
+                        )}
+                        {card.card_type === 'artifact' && card.ability && (
+                          <div className="text-[10px] text-neutral-400 mt-1 truncate">{card.ability}</div>
+                        )}
                       </div>
-                    )}
-                    {card.card_type === 'artifact' && card.ability && (
-                      <div className="text-[10px] text-neutral-400 mt-1 truncate">{card.ability}</div>
-                    )}
-                  </div>
-                  <div className="flex flex-col items-end gap-0.5 shrink-0">
-                    <span className="text-[10px]" title={card.art_description ? 'Has description' : 'No description'}>
-                      {card.art_description ? '📝' : '⬜'}
-                    </span>
-                    <span className="text-[10px]" title={card.raw_art_path ? 'Has art' : 'No art'}>
-                      {card.raw_art_path ? '🎨' : '⬜'}
-                    </span>
+                      <div className="flex flex-col items-end gap-0.5 shrink-0">
+                        <span className="text-[10px]" title={card.art_description ? 'Has description' : 'No description'}>
+                          {card.art_description ? '📝' : '⬜'}
+                        </span>
+                        <span className="text-[10px]" title={card.raw_art_path ? 'Has art' : 'No art'}>
+                          {card.raw_art_path ? '🎨' : '⬜'}
+                        </span>
+                      </div>
+                    </div>
+                    {/* Quick action buttons */}
+                    <div className="flex gap-1 mt-2">
+                      {!card.art_description && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); generateDescription(card.id); }}
+                          className="text-[10px] bg-amber-700 hover:bg-amber-600 text-white px-2 py-0.5 rounded"
+                          title="Generate description"
+                        >
+                          📝 Gen
+                        </button>
+                      )}
+                      {card.art_description && !card.raw_art_path && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCard(card);
+                          }}
+                          className="text-[10px] bg-purple-700 hover:bg-purple-600 text-white px-2 py-0.5 rounded"
+                          title="Generate art"
+                        >
+                          🎨 Art
+                        </button>
+                      )}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCard(card);
+                          setEditingName(true);
+                          setNameDraft(card.name || '');
+                        }}
+                        className="text-[10px] bg-neutral-700 hover:bg-neutral-600 text-neutral-300 px-2 py-0.5 rounded"
+                        title="Edit name"
+                      >
+                        ✏️
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Detail Panel */}
         {selectedCard && (
-          <div className="w-[45%] sticky top-20 self-start bg-neutral-900 border border-neutral-800 rounded-lg p-4 space-y-4 max-h-[calc(100vh-8rem)] overflow-y-auto">
+          <div className="w-[45%] sticky top-20 self-start bg-neutral-900 border border-neutral-800 rounded-lg p-4 space-y-3 max-h-[calc(100vh-8rem)] overflow-y-auto">
+            {/* Header with editable name */}
             <div className="flex items-start justify-between">
-              <div>
+              <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{typeIcon(selectedCard.card_type)}</span>
-                  <h3 className="text-lg font-bold">{selectedCard.name}</h3>
+                  {editingName ? (
+                    <div className="flex items-center gap-1 flex-1">
+                      <input
+                        value={nameDraft}
+                        onChange={e => setNameDraft(e.target.value)}
+                        onKeyDown={e => {
+                          if (e.key === 'Enter') saveName(selectedCard.id, nameDraft);
+                          if (e.key === 'Escape') setEditingName(false);
+                        }}
+                        className="bg-neutral-800 border border-neutral-600 rounded px-2 py-0.5 text-lg font-bold flex-1 min-w-0"
+                        autoFocus
+                      />
+                      <button onClick={() => saveName(selectedCard.id, nameDraft)} className="text-xs bg-green-600 hover:bg-green-500 text-white px-2 py-1 rounded">Save</button>
+                      <button onClick={() => setEditingName(false)} className="text-xs text-neutral-500 hover:text-neutral-300">✕</button>
+                    </div>
+                  ) : (
+                    <h3
+                      className="text-lg font-bold cursor-pointer hover:text-blue-300 transition-colors truncate"
+                      onClick={() => { setEditingName(true); setNameDraft(selectedCard.name || ''); }}
+                      title="Click to edit name"
+                    >
+                      {selectedCard.name}
+                    </h3>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xs text-neutral-500">#{String(selectedCard.card_number).padStart(3, '0')}</span>
@@ -476,7 +577,7 @@ export default function CardsV2Page() {
                   </span>
                 </div>
               </div>
-              <button onClick={() => setSelectedCard(null)} className="text-neutral-500 hover:text-neutral-300 text-lg">✕</button>
+              <button onClick={() => { setSelectedCard(null); setEditingName(false); }} className="text-neutral-500 hover:text-neutral-300 text-lg ml-2 shrink-0">✕</button>
             </div>
 
             {/* Hero Details */}
@@ -542,30 +643,43 @@ export default function CardsV2Page() {
               </div>
             )}
 
-            {/* 3D Card Preview */}
-            <div className="bg-neutral-800 rounded-lg overflow-hidden" style={{ aspectRatio: '5/7' }}>
-              <SplineCard
-                className="w-full h-full"
-                cardContent={cardToSplineContent({
-                  card_type: selectedCard.card_type,
-                  name: selectedCard.name,
-                  hero_class: selectedCard.hero_class,
-                  perk_1_desc: selectedCard.perk_1_desc,
-                  color: selectedCard.color,
-                  shape: selectedCard.shape || ('circle' as any),
-                  material: selectedCard.material || ('flat' as any),
-                  background: selectedCard.background || ('default' as any),
-                  mana_color: selectedCard.mana_color || ('yellow' as any),
-                  rarity_tier: selectedCard.rarity_tier,
-                  atk: selectedCard.atk ?? 0,
-                  def: selectedCard.def ?? 0,
-                  hp: selectedCard.hp ?? 0,
-                  mana_cost: selectedCard.mana_cost ?? 0,
-                  ability: selectedCard.ability,
-                  card_number: selectedCard.card_number,
-                  raw_art_path: selectedCard.raw_art_path,
-                })}
-              />
+            {/* Art + 3D Preview Row */}
+            <div className="flex gap-3">
+              {/* Art image (if exists) */}
+              {selectedCard.raw_art_path && (
+                <div className="flex-1 bg-neutral-800 rounded-lg overflow-hidden">
+                  <img
+                    src={artUrl(selectedCard.raw_art_path)!}
+                    alt={selectedCard.name || ''}
+                    className="w-full aspect-[4/3] object-cover"
+                  />
+                </div>
+              )}
+              {/* 3D Card Preview — compact */}
+              <div className="bg-neutral-800 rounded-lg overflow-hidden shrink-0" style={{ width: '120px', aspectRatio: '5/7' }}>
+                <SplineCard
+                  className="w-full h-full"
+                  cardContent={cardToSplineContent({
+                    card_type: selectedCard.card_type,
+                    name: selectedCard.name,
+                    hero_class: selectedCard.hero_class,
+                    perk_1_desc: selectedCard.perk_1_desc,
+                    color: selectedCard.color,
+                    shape: selectedCard.shape || ('circle' as any),
+                    material: selectedCard.material || ('flat' as any),
+                    background: selectedCard.background || ('default' as any),
+                    mana_color: selectedCard.mana_color || ('yellow' as any),
+                    rarity_tier: selectedCard.rarity_tier,
+                    atk: selectedCard.atk ?? 0,
+                    def: selectedCard.def ?? 0,
+                    hp: selectedCard.hp ?? 0,
+                    mana_cost: selectedCard.mana_cost ?? 0,
+                    ability: selectedCard.ability,
+                    card_number: selectedCard.card_number,
+                    raw_art_path: selectedCard.raw_art_path,
+                  })}
+                />
+              </div>
             </div>
 
             {/* Art Description */}
@@ -610,25 +724,11 @@ export default function CardsV2Page() {
                   </div>
                 </div>
               ) : (
-                <div className="text-sm text-neutral-400 bg-neutral-800/50 rounded p-2 min-h-[40px]">
+                <div className="text-sm text-neutral-400 bg-neutral-800/50 rounded p-2 min-h-[40px] max-h-[120px] overflow-y-auto">
                   {selectedCard.art_description || <span className="italic text-neutral-600">No description yet. Click Generate.</span>}
                 </div>
               )}
             </div>
-
-            {/* Art Preview */}
-            {selectedCard.raw_art_path && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-neutral-300">Art</h4>
-                <div className="bg-neutral-800 rounded overflow-hidden">
-                  <img
-                    src={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/raw-arts/${selectedCard.raw_art_path.replace(/^raw-arts\//, '')}`}
-                    alt={selectedCard.name}
-                    className="w-full aspect-[4/3] object-cover"
-                  />
-                </div>
-              </div>
-            )}
 
             {/* Generate Art Button */}
             {selectedCard.art_description && (

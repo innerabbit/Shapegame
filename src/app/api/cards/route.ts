@@ -27,10 +27,18 @@ export async function GET(request: NextRequest) {
   const background = searchParams.get('background');
   if (background) query = query.eq('background', background);
 
-  // Order
+  // Order — try card_number first, fall back to created_at
   query = query.order('card_number', { ascending: true });
 
-  const { data, error } = await query;
+  let { data, error } = await query;
+
+  // If card_number column doesn't exist, retry without ordering by it
+  if (error && error.message.includes('card_number')) {
+    const retryQuery = supabase.from('cards').select('*').order('created_at', { ascending: true });
+    const retry = await retryQuery;
+    data = retry.data;
+    error = retry.error;
+  }
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

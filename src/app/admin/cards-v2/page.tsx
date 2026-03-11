@@ -37,14 +37,27 @@ export default function CardsV2Page() {
   const [descDraft, setDescDraft] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
 
+  const [error, setError] = useState<string | null>(null);
+
   // Fetch cards
   const fetchCards = useCallback(async () => {
     setLoading(true);
-    const res = await fetch('/api/cards');
-    const data = await res.json();
-    // Filter to v2 cards only (have card_type)
-    const v2Cards = (data.cards || data || []).filter((c: any) => c.card_type);
-    setCards(v2Cards);
+    setError(null);
+    try {
+      const res = await fetch('/api/cards');
+      const data = await res.json();
+      if (data.error) {
+        setError(data.error);
+        setCards([]);
+      } else {
+        const allCards = Array.isArray(data) ? data : (data.cards || []);
+        const v2Cards = allCards.filter((c: any) => c.card_type);
+        setCards(v2Cards);
+      }
+    } catch (e: any) {
+      setError(e.message || 'Failed to fetch cards');
+      setCards([]);
+    }
     setLoading(false);
   }, []);
 
@@ -172,6 +185,19 @@ export default function CardsV2Page() {
 
   if (loading) {
     return <div className="text-center py-20 text-neutral-500">Loading cards...</div>;
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-20">
+        <p className="text-red-400 mb-2 font-medium">Failed to load cards</p>
+        <p className="text-neutral-500 text-sm mb-6 max-w-lg mx-auto font-mono">{error}</p>
+        <p className="text-neutral-400 text-sm mb-4">Run the v2 migration SQL in Supabase Dashboard first, then seed the cards.</p>
+        <button onClick={seedCards} className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-2 rounded-md text-sm font-medium">
+          🌱 Seed 125 Cards
+        </button>
+      </div>
+    );
   }
 
   if (cards.length === 0) {

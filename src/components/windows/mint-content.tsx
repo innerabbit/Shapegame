@@ -17,6 +17,10 @@ interface MintStatus {
   hasEnoughBalance: boolean;
   totalMints: number;
   cooldownMinutes: number;
+  holdingPeriodMinutes: number;
+  holdingComplete: boolean;
+  holdingSecondsRemaining: number;
+  holdingFirstSeenAt: string | null;
   walletAddress?: string;
   reason?: string;
 }
@@ -43,6 +47,7 @@ export function MintContent() {
   const [status, setStatus] = useState<MintStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [countdown, setCountdown] = useState(0);
+  const [holdingCountdown, setHoldingCountdown] = useState(0);
   const [stage, setStage] = useState<MintStage>('idle');
   const [error, setError] = useState<string | null>(null);
   const [mintedCards, setMintedCards] = useState<any[] | null>(null);
@@ -57,6 +62,7 @@ export function MintContent() {
       const data: MintStatus = await res.json();
       setStatus(data);
       setCountdown(data.secondsRemaining);
+      setHoldingCountdown(data.holdingSecondsRemaining || 0);
     } catch {
       // Silently fail — will show as not authenticated
     } finally {
@@ -74,25 +80,33 @@ export function MintContent() {
     }
   }, [connected, isAuthenticated, fetchStatus]);
 
-  // Countdown timer
+  // Countdown timer (cooldown + holding)
   useEffect(() => {
-    if (countdown <= 0) {
+    const activeCountdown = countdown > 0 || holdingCountdown > 0;
+    if (!activeCountdown) {
       if (intervalRef.current) clearInterval(intervalRef.current);
       return;
     }
     intervalRef.current = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          fetchStatus(); // Refresh when cooldown ends
-          return 0;
-        }
-        return prev - 1;
-      });
+      let shouldRefresh = false;
+      if (countdown > 0) {
+        setCountdown((prev) => {
+          if (prev <= 1) { shouldRefresh = true; return 0; }
+          return prev - 1;
+        });
+      }
+      if (holdingCountdown > 0) {
+        setHoldingCountdown((prev) => {
+          if (prev <= 1) { shouldRefresh = true; return 0; }
+          return prev - 1;
+        });
+      }
+      if (shouldRefresh) fetchStatus();
     }, 1000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [countdown, fetchStatus]);
+  }, [countdown, holdingCountdown, fetchStatus]);
 
   const formatTime = (seconds: number): string => {
     const m = Math.floor(seconds / 60);
@@ -271,6 +285,35 @@ export function MintContent() {
                 <span className="font-bold">{status.requiredBalance} SOL</span>
               </div>
 
+              {/* Holding period */}
+              {holdingCountdown > 0 && (
+                <div className="border border-[#c3c0b6] bg-[#f0f4ff] p-2">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-[#003c74]">Holding period:</span>
+                    <span className="font-bold text-[#003c74] font-mono text-[14px]">
+                      {formatTime(holdingCountdown)}
+                    </span>
+                  </div>
+                  <div className="xp-progress mt-1 h-[8px]">
+                    <div
+                      className="h-full bg-[#003c74] transition-all duration-1000"
+                      style={{
+                        width: `${Math.max(0, 100 - (holdingCountdown / ((status?.holdingPeriodMinutes ?? 30) * 60)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-[#666] mt-1">
+                    Hold {status?.requiredBalance ?? 0.01} SOL for {status?.holdingPeriodMinutes ?? 30} min to unlock minting
+                  </p>
+                </div>
+              )}
+              {status?.holdingComplete && !holdingCountdown && (
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-[#666]">Holding period:</span>
+                  <span className="font-bold text-[#22a846]">Complete</span>
+                </div>
+              )}
+
               {/* Cooldown */}
               {countdown > 0 && (
                 <div className="border border-[#c3c0b6] bg-[#fff8e8] p-2">
@@ -375,6 +418,8 @@ export function MintContent() {
                   ? stageLabels[stage]
                   : status?.canMint
                   ? 'Mint NFT Booster (6 Cards)'
+                  : holdingCountdown > 0
+                  ? `Hold SOL: ${formatTime(holdingCountdown)}`
                   : countdown > 0
                   ? `Cooldown: ${formatTime(countdown)}`
                   : !status?.hasEnoughBalance

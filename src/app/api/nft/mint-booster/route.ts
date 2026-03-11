@@ -5,7 +5,8 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getUmi } from '@/lib/nft/umi';
 import { pickBoosterPack } from '@/lib/nft/pick-booster';
 import { buildMintTransactions } from '@/lib/nft/build-mint-tx';
-import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES } from '@/lib/nft/config';
+import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
+import { checkBalanceHistory } from '@/lib/nft/check-balance-history';
 import { randomUUID } from 'crypto';
 
 export const maxDuration = 30; // Vercel function timeout
@@ -61,10 +62,48 @@ export async function POST() {
     }, { status: 403 });
   }
 
-  // 3. Atomic cooldown claim (prevents race condition)
+  // 3. Balance history check (anti-shuttle)
+  const { data: cooldownRecord } = await admin
+    .from('mint_cooldowns')
+    .select('first_seen_at')
+    .eq('wallet_address', walletAddress)
+    .single();
+
+  if (!cooldownRecord?.first_seen_at) {
+    return NextResponse.json({
+      error: 'Holding period not started. Keep your balance above the minimum.',
+    }, { status: 403 });
+  }
+
+  const firstSeen = new Date(cooldownRecord.first_seen_at);
+  const holdingEnd = new Date(firstSeen.getTime() + HOLDING_PERIOD_MINUTES * 60 * 1000);
+
+  if (holdingEnd > new Date()) {
+    const secs = Math.ceil((holdingEnd.getTime() - Date.now()) / 1000);
+    return NextResponse.json({
+      error: 'Holding period active',
+      holdingSecondsRemaining: secs,
+    }, { status: 403 });
+  }
+
+  // Verify balance didn't drop below threshold during holding period
+  const historyCheck = await checkBalanceHistory(
+    connection, walletAddress, firstSeen, MIN_BALANCE_LAMPORTS,
+  );
+
+  if (!historyCheck.ok) {
+    // Reset holding period — they moved funds
+    await admin.rpc('reset_holding_period', { p_wallet: walletAddress });
+    return NextResponse.json({
+      error: `Balance dropped during holding period. Timer reset. ${historyCheck.reason}`,
+    }, { status: 403 });
+  }
+
+  // 4. Atomic cooldown + holding claim (prevents race condition)
   const { data: canMint, error: cooldownError } = await admin.rpc('try_claim_mint', {
     p_wallet: walletAddress,
     p_cooldown_minutes: MINT_COOLDOWN_MINUTES,
+    p_holding_minutes: HOLDING_PERIOD_MINUTES,
   });
 
   if (cooldownError) {

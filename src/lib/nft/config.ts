@@ -10,6 +10,9 @@ export const MIN_BALANCE_LAMPORTS = Number(process.env.MIN_MINT_BALANCE_LAMPORTS
 /** Cooldown between mints in minutes */
 export const MINT_COOLDOWN_MINUTES = Number(process.env.MINT_COOLDOWN_MINUTES || 30);
 
+/** How long wallet must hold minimum balance before minting (minutes) */
+export const HOLDING_PERIOD_MINUTES = Number(process.env.HOLDING_PERIOD_MINUTES || 30);
+
 /** Base URL for metadata endpoint */
 export const METADATA_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://theshapegame.app';
 

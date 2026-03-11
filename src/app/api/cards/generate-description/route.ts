@@ -4,49 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-function buildDescriptionPrompt(card: any): string {
-  const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, warm colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
-
-Generate a vivid, cinematic visual description (2-3 sentences) for this card's artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit '96 aesthetic is mandatory.
-
-`;
-
-  if (card.card_type === 'hero') {
-    return base + `HERO CARD:
-- Name: ${card.name}
-- Class: ${card.hero_class} (${classContext(card.hero_class)})
-- Color: ${card.color}
-- Rarity: ${card.rarity_tier}
-- ATK: ${card.atk}, HP: ${card.hp}
-- Perk 1: ${card.perk_1_name || 'none'} — ${card.perk_1_desc || ''}
-${card.perk_2_name ? `- Perk 2: ${card.perk_2_name} — ${card.perk_2_desc}` : ''}
-
-Describe this character in a Detroit '96 scene. Include their appearance, clothing, pose, and environment. The character's power level should be reflected in the scene scale — ${card.rarity_tier === 'legendary' ? 'EPIC, larger-than-life composition' : card.rarity_tier === 'epic' ? 'dramatic, powerful presence' : 'everyday street scene'}.`;
-  }
-
-  if (card.card_type === 'land') {
-    return base + `LAND CARD (Mana Source):
-- Name: ${card.name}
-- Color: ${card.color} (${colorContext(card.color)})
-- Shape: ${card.shape}
-- Material: ${card.material}
-- Rarity: ${card.rarity_tier}
-
-Describe a Detroit '96 location that embodies the ${card.color} mana color. The ${card.shape} shape in ${card.material} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: ${materialContext(card.material)}.`;
-  }
-
-  if (card.card_type === 'artifact') {
-    return base + `ARTIFACT CARD (Weapon/Equipment):
-- Name: ${card.name}
-- Type: ${card.artifact_subtype}
-- Rarity: ${card.rarity_tier}
-- Effect: ${card.ability}
-
-Describe this item in a Detroit '96 context. Show the ${card.name} as if photographed on a table, in someone's hands, or in use on the street. The item's power should match its rarity: ${card.rarity_tier === 'legendary' ? 'mythical, almost glowing' : card.rarity_tier === 'epic' ? 'impressive, clearly valuable' : 'street-level, gritty'}.`;
-  }
-
-  return base + `Card: ${card.name} (${card.card_type}). Describe a scene for this card in Detroit 1996 VHS aesthetic.`;
-}
+// ── Context helpers ─────────────────────────────────────
 
 function classContext(cls: string): string {
   const map: Record<string, string> = {
@@ -82,6 +40,103 @@ function materialContext(material: string): string {
   return map[material] || material;
 }
 
+function rarityScale(tier: string): string {
+  if (tier === 'legendary') return 'EPIC, larger-than-life composition';
+  if (tier === 'epic') return 'dramatic, powerful presence';
+  return 'everyday street scene';
+}
+
+// ── Template interpolation ──────────────────────────────
+
+function interpolate(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_, key) => vars[key] ?? '');
+}
+
+function buildPromptFromTemplates(
+  card: any,
+  templates: Record<string, string>
+): string {
+  const base = templates['base'] || '';
+  const type = card.card_type as string;
+  const typeTemplate = templates[type];
+
+  if (!typeTemplate) {
+    return `${base}\n\nCard: ${card.name} (${card.card_type}). Describe a scene for this card in Detroit 1996 VHS aesthetic.`;
+  }
+
+  const vars: Record<string, string> = {
+    name: card.name || '',
+    hero_class: card.hero_class || '',
+    class_context: classContext(card.hero_class || ''),
+    color: card.color || '',
+    color_context: colorContext(card.color || ''),
+    rarity_tier: card.rarity_tier || '',
+    rarity_scale: rarityScale(card.rarity_tier || ''),
+    atk: String(card.atk ?? ''),
+    hp: String(card.hp ?? ''),
+    perk_1_name: card.perk_1_name || 'none',
+    perk_1_desc: card.perk_1_desc || '',
+    perk_2_line: card.perk_2_name
+      ? `- Perk 2: ${card.perk_2_name} — ${card.perk_2_desc || ''}`
+      : '',
+    shape: card.shape || '',
+    material: card.material || '',
+    material_context: materialContext(card.material || ''),
+    artifact_subtype: card.artifact_subtype || '',
+    ability: card.ability || '',
+  };
+
+  return `${base}\n\n${interpolate(typeTemplate, vars)}`;
+}
+
+// ── Hardcoded fallback (used if prompts table doesn't exist yet) ──
+
+function buildDescriptionPromptFallback(card: any): string {
+  const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, warm colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
+
+Generate a vivid, cinematic visual description (2-3 sentences) for this card's artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit '96 aesthetic is mandatory.
+
+`;
+
+  if (card.card_type === 'hero') {
+    return base + `HERO CARD:
+- Name: ${card.name}
+- Class: ${card.hero_class} (${classContext(card.hero_class)})
+- Color: ${card.color}
+- Rarity: ${card.rarity_tier}
+- ATK: ${card.atk}, HP: ${card.hp}
+- Perk 1: ${card.perk_1_name || 'none'} — ${card.perk_1_desc || ''}
+${card.perk_2_name ? `- Perk 2: ${card.perk_2_name} — ${card.perk_2_desc}` : ''}
+
+Describe this character in a Detroit '96 scene. Include their appearance, clothing, pose, and environment. The character's power level should be reflected in the scene scale — ${rarityScale(card.rarity_tier)}.`;
+  }
+
+  if (card.card_type === 'land') {
+    return base + `LAND CARD (Mana Source):
+- Name: ${card.name}
+- Color: ${card.color} (${colorContext(card.color)})
+- Shape: ${card.shape}
+- Material: ${card.material}
+- Rarity: ${card.rarity_tier}
+
+Describe a Detroit '96 location that embodies the ${card.color} mana color. The ${card.shape} shape in ${card.material} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: ${materialContext(card.material)}.`;
+  }
+
+  if (card.card_type === 'artifact') {
+    return base + `ARTIFACT CARD (Weapon/Equipment):
+- Name: ${card.name}
+- Type: ${card.artifact_subtype}
+- Rarity: ${card.rarity_tier}
+- Effect: ${card.ability}
+
+Describe this item in a Detroit '96 context. Show the ${card.name} as if photographed on a table, in someone's hands, or in use on the street. The item's power should match its rarity: ${rarityScale(card.rarity_tier)}.`;
+  }
+
+  return base + `Card: ${card.name} (${card.card_type}). Describe a scene for this card in Detroit 1996 VHS aesthetic.`;
+}
+
+// ── POST handler ────────────────────────────────────────
+
 export async function POST(request: NextRequest) {
   const { cardIds, forceRegenerate } = await request.json();
 
@@ -94,6 +149,22 @@ export async function POST(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // ── Load prompt templates from DB ──
+  let templates: Record<string, string> | null = null;
+  try {
+    const { data: promptRows } = await supabase
+      .from('prompts')
+      .select('slug, content');
+    if (promptRows && promptRows.length > 0) {
+      templates = {};
+      for (const row of promptRows) {
+        templates[row.slug] = row.content;
+      }
+    }
+  } catch {
+    // Table doesn't exist yet — use fallback
+  }
 
   // Fetch cards
   const { data: cards, error: fetchError } = await supabase
@@ -115,7 +186,9 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const prompt = buildDescriptionPrompt(card);
+      const prompt = templates
+        ? buildPromptFromTemplates(card, templates)
+        : buildDescriptionPromptFallback(card);
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-lite',

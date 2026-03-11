@@ -39,6 +39,12 @@ export default function CardsV2Page() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // Prompt templates
+  const [promptsOpen, setPromptsOpen] = useState(false);
+  const [prompts, setPrompts] = useState<Record<string, { id: string; label: string; content: string; updated_at: string }> | null>(null);
+  const [promptDrafts, setPromptDrafts] = useState<Record<string, string>>({});
+  const [savingPrompt, setSavingPrompt] = useState<string | null>(null);
+
   // Fetch cards
   const fetchCards = useCallback(async () => {
     setLoading(true);
@@ -130,6 +136,46 @@ export default function CardsV2Page() {
         setSelectedCard(prev => prev ? { ...prev, art_description: desc } : null);
       }
     }
+  };
+
+  // Fetch prompts from DB
+  const fetchPrompts = async () => {
+    try {
+      const res = await fetch('/api/prompts');
+      const data = await res.json();
+      if (data.prompts) {
+        setPrompts(data.prompts);
+        const drafts: Record<string, string> = {};
+        for (const [slug, p] of Object.entries(data.prompts) as [string, any][]) {
+          drafts[slug] = p.content;
+        }
+        setPromptDrafts(drafts);
+      }
+    } catch {
+      toast.error('Failed to load prompts');
+    }
+  };
+
+  // Save a single prompt
+  const savePrompt = async (slug: string) => {
+    setSavingPrompt(slug);
+    try {
+      const res = await fetch('/api/prompts', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug, content: promptDrafts[slug] }),
+      });
+      const data = await res.json();
+      if (data.prompt) {
+        toast.success(`Prompt "${slug}" saved`);
+        setPrompts(prev => prev ? { ...prev, [slug]: { ...prev[slug], content: promptDrafts[slug], updated_at: data.prompt.updated_at } } : null);
+      } else {
+        toast.error(data.error || 'Save failed');
+      }
+    } catch {
+      toast.error('Network error saving prompt');
+    }
+    setSavingPrompt(null);
   };
 
   // Bulk generate descriptions
@@ -293,6 +339,63 @@ export default function CardsV2Page() {
               className="bg-amber-500 h-2 rounded-full transition-all"
               style={{ width: `${(bulkProgress.done / bulkProgress.total) * 100}%` }}
             />
+          </div>
+        )}
+      </details>
+
+      {/* Prompt Templates Editor */}
+      <details
+        className="bg-neutral-900 p-3 rounded-lg border border-neutral-800"
+        open={promptsOpen}
+        onToggle={(e) => {
+          const open = (e.target as HTMLDetailsElement).open;
+          setPromptsOpen(open);
+          if (open && !prompts) fetchPrompts();
+        }}
+      >
+        <summary className="text-sm font-medium cursor-pointer text-neutral-300">📝 Prompt Templates (Supabase)</summary>
+        {!prompts ? (
+          <p className="mt-3 text-xs text-neutral-500">Loading prompts...</p>
+        ) : (
+          <div className="mt-3 space-y-4">
+            {(['base', 'hero', 'land', 'artifact'] as const).map(slug => {
+              const p = prompts[slug];
+              if (!p) return null;
+              const draft = promptDrafts[slug] ?? p.content;
+              const changed = draft !== p.content;
+              return (
+                <div key={slug} className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-neutral-400 uppercase">{p.label}</label>
+                    <span className="text-[10px] text-neutral-600">
+                      updated {new Date(p.updated_at).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <textarea
+                    value={draft}
+                    onChange={e => setPromptDrafts(prev => ({ ...prev, [slug]: e.target.value }))}
+                    rows={slug === 'base' ? 6 : 10}
+                    className="w-full bg-neutral-800 text-sm rounded-lg p-3 border border-neutral-700 font-mono text-neutral-200 resize-y"
+                    placeholder={`${slug} prompt template...`}
+                  />
+                  {slug !== 'base' && (
+                    <p className="text-[10px] text-neutral-600">
+                      Variables: {'{{name}} {{color}} {{rarity_tier}} {{rarity_scale}}'}{' '}
+                      {slug === 'hero' && '{{hero_class}} {{class_context}} {{atk}} {{hp}} {{perk_1_name}} {{perk_1_desc}} {{perk_2_line}}'}
+                      {slug === 'land' && '{{color_context}} {{shape}} {{material}} {{material_context}}'}
+                      {slug === 'artifact' && '{{artifact_subtype}} {{ability}}'}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => savePrompt(slug)}
+                    disabled={!changed || savingPrompt === slug}
+                    className="bg-green-700 hover:bg-green-600 disabled:bg-neutral-700 disabled:text-neutral-500 text-white px-4 py-1 rounded text-xs font-medium"
+                  >
+                    {savingPrompt === slug ? 'Saving...' : changed ? 'Save Changes' : 'No Changes'}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </details>

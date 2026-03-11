@@ -497,50 +497,88 @@
   user-select: none;
 }
 
-/* ── XP Bottom Tabs ── */
-.xp-bottom-tabs {
-  position: fixed;
-  bottom: 36px;
-  left: 0;
-  right: 0;
-  z-index: 99;
-  background: linear-gradient(180deg, #ece9d8 0%, #e0ddd0 100%);
-  border-top: 1px solid #fff;
-  border-bottom: 1px solid #919b9c;
-  display: flex;
-  align-items: stretch;
-  height: 48px;
-  box-shadow: 0 -2px 6px rgba(0,0,0,0.08);
+/* ── XP Managed Windows ── */
+.xp-window-area {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
-.xp-bottom-tab {
-  flex: 1;
+.xp-managed-window {
+  position: absolute;
+  /* Mobile: full screen */
+  inset: 0;
   display: flex;
   flex-direction: column;
+}
+
+@media (min-width: 768px) {
+  .xp-managed-window {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(85vw, 900px);
+    height: min(80vh, 700px);
+  }
+}
+
+.xp-title-bar-inactive {
+  background: linear-gradient(180deg, #7996c8 0%, #6080b8 8%, #5c7cb5 20%, #5576b0 60%, #4e6fa8 90%, #5575ad 100%);
+}
+
+/* ── XP Start Menu ── */
+.xp-start-menu {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 99;
+  width: 240px;
+  background: #fff;
+  border: 2px solid #0054e3;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 3px 3px 12px rgba(0,0,0,0.4);
+  overflow: hidden;
+  margin-bottom: 2px;
+}
+
+.xp-start-menu-header {
+  background: linear-gradient(180deg, #0997ff 0%, #0053ee 50%, #084ece 100%);
+  padding: 8px 10px;
+  display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  color: #555;
-  text-decoration: none;
-  cursor: default;
-  border-right: 1px solid #c3c0b6;
-  transition: background 0.1s;
+  gap: 8px;
+  color: white;
+  font-size: 13px;
+  text-shadow: 1px 1px 1px rgba(0,0,0,0.4);
 }
 
-.xp-bottom-tab:last-child {
-  border-right: none;
+.xp-start-menu-items {
+  padding: 4px 0;
 }
 
-.xp-bottom-tab:hover {
-  background: linear-gradient(180deg, #f5f3ee 0%, #e8e5dc 100%);
+.xp-start-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 14px;
+  font-size: 12px;
   color: #222;
+  cursor: default;
+  border: none;
+  background: none;
+  text-align: left;
 }
 
-.xp-bottom-tab-active {
-  background: linear-gradient(180deg, #fff 0%, #f0ede5 100%);
-  color: #003399;
-  font-weight: bold;
-  box-shadow: inset 0 2px 0 #0054e3;
+.xp-start-menu-item:hover {
+  background: #316ac5;
+  color: white;
+}
+
+/* Minimized taskbar button style */
+.xp-taskbar-btn-minimized {
+  opacity: 0.7;
 }
 
 /* ═══════════════════════════════════════════════

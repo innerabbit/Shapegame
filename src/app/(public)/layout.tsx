@@ -1,30 +1,109 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { WalletProvider } from '@/components/providers/wallet-provider';
 import { WalletButton } from '@/components/wallet-button';
 import { Toaster } from 'sonner';
+import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
 
-const NAV = [
-  { href: '/', label: 'Home', icon: '🏠', exact: true },
-  { href: '/shop', label: 'Shop', icon: '🛒' },
-  { href: '/collection', label: 'Collection', icon: '🃏' },
-  { href: '/gallery', label: 'Gallery', icon: '🖼️' },
-  { href: '/leaderboard', label: 'Board', icon: '🏆' },
+const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
+  { id: 'onboarding', icon: '🏠', label: 'Welcome' },
+  { id: 'shop', icon: '🛒', label: 'Shop' },
+  { id: 'collection', icon: '🃏', label: 'Collection' },
+  { id: 'decks', icon: '📋', label: 'Deck Builder' },
+  { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
 ];
+
+function TaskbarInner() {
+  const windows = useWindowManager((s) => s.windows);
+  const focusedWindow = useWindowManager((s) => s.focusedWindow);
+  const toggleWindow = useWindowManager((s) => s.toggleWindow);
+  const openWindow = useWindowManager((s) => s.openWindow);
+  const [startOpen, setStartOpen] = useState(false);
+
+  const openWindows = windows.filter((w) => w.isOpen);
+
+  return (
+    <div className="xp-taskbar">
+      {/* Start button */}
+      <div className="relative">
+        <button
+          className="xp-start-button"
+          onClick={() => setStartOpen(!startOpen)}
+        >
+          <span className="text-base">🪟</span>
+          start
+        </button>
+
+        {/* Start menu */}
+        {startOpen && (
+          <>
+            <div className="fixed inset-0 z-[98]" onClick={() => setStartOpen(false)} />
+            <div className="xp-start-menu">
+              <div className="xp-start-menu-header">
+                <span className="text-base">🎴</span>
+                <span className="font-bold">SHAPE_CARDS</span>
+              </div>
+              <div className="xp-start-menu-items">
+                {ALL_WINDOWS.map((w) => (
+                  <button
+                    key={w.id}
+                    className="xp-start-menu-item"
+                    onClick={() => {
+                      openWindow(w.id);
+                      setStartOpen(false);
+                    }}
+                  >
+                    <span className="text-base">{w.icon}</span>
+                    <span>{w.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Taskbar buttons — one per open window */}
+      <div className="xp-taskbar-buttons">
+        {openWindows.map((w) => {
+          const isFocused = focusedWindow === w.id;
+          return (
+            <button
+              key={w.id}
+              className={`xp-taskbar-btn ${isFocused ? 'xp-taskbar-btn-active' : ''} ${w.isMinimized ? 'xp-taskbar-btn-minimized' : ''}`}
+              onClick={() => toggleWindow(w.id)}
+            >
+              <span className="text-xs">{w.icon}</span>
+              <span className="truncate">{w.title}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* System tray */}
+      <div className="xp-tray">
+        <span className="text-[10px]">🔊</span>
+        <span className="text-[11px]">
+          {new Date().toLocaleTimeString('en-US', {
+            hour: 'numeric',
+            minute: '2-digit',
+            hour12: true,
+          })}
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function PublicLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
   return (
     <WalletProvider>
-      {/* Bottom nav (48) + taskbar (36) = 84px reserved */}
-      <div className="xp-desktop flex flex-col" style={{ paddingBottom: 84 }}>
+      <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
         {/* Title bar — fixed at top */}
         <div className="xp-top-bar">
           <div className="flex items-center gap-[6px]">
@@ -34,53 +113,13 @@ export default function PublicLayout({
           <WalletButton />
         </div>
 
-        {/* Main content */}
-        <main className="flex-1 p-3 md:p-6 pt-1">
+        {/* Main content — desktop area */}
+        <main className="flex-1 relative">
           {children}
         </main>
 
-        {/* Bottom tab navigation */}
-        <nav className="xp-bottom-tabs">
-          {NAV.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={`xp-bottom-tab ${active ? 'xp-bottom-tab-active' : ''}`}
-              >
-                <span className="text-base leading-none">{item.icon}</span>
-                <span className="text-[10px]">{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* XP Taskbar */}
-        <div className="xp-taskbar">
-          <button className="xp-start-button">
-            <span className="text-base">🪟</span>
-            start
-          </button>
-          <div className="xp-taskbar-buttons">
-            <div className="xp-taskbar-btn xp-taskbar-btn-active">
-              <span className="text-xs">🎴</span>
-              <span className="truncate">SHAPE_CARDS</span>
-            </div>
-          </div>
-          <div className="xp-tray">
-            <span className="text-[10px]">🔊</span>
-            <span className="text-[11px]">
-              {new Date().toLocaleTimeString('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true,
-              })}
-            </span>
-          </div>
-        </div>
+        {/* XP Taskbar with dynamic buttons */}
+        <TaskbarInner />
 
         <Toaster
           theme="light"

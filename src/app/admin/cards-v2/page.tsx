@@ -690,6 +690,7 @@ export default function CardsV2Page() {
                     card_type: selectedCard.card_type,
                     name: selectedCard.name,
                     hero_class: selectedCard.hero_class,
+                    perk_1_name: selectedCard.perk_1_name,
                     perk_1_desc: selectedCard.perk_1_desc,
                     color: selectedCard.color,
                     shape: selectedCard.shape || ('circle' as any),

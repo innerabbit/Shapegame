@@ -21,6 +21,7 @@ export interface CardData {
   card_type?: CardType;
   name?: string | null;
   hero_class?: string | null;
+  perk_1_name?: string | null;
   perk_1_desc?: string | null;
   color?: string | null;
   // Legacy fields (fallback)
@@ -60,7 +61,9 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
 
     return {
       title: card.name.toUpperCase(),
-      description: card.perk_1_desc || card.ability || '',
+      description: card.perk_1_name
+        ? `${card.perk_1_name}: ${card.perk_1_desc || ''}`
+        : card.perk_1_desc || card.ability || '',
       cardNumber: `#${String(card.card_number).padStart(3, '0')}`,
       rarity: (RARITY_LABELS[card.rarity_tier] || 'COMMON').toUpperCase(),
       stats: card.card_type === 'hero' ? `${card.atk} / ${card.hp}` : '',

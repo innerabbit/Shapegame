@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://theshapegame.app';
 
 /**
  * GET /api/nft/metadata/[card_number]
@@ -29,8 +30,11 @@ export async function GET(
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
   }
 
-  // Build image URL from art path
-  let imageUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://theshapegame.app'}/placeholder-card.png`;
+  // Interactive 3D card page (rendered in iframe on marketplaces)
+  const animationUrl = `${APP_URL}/nft/card/${num}`;
+
+  // Build image URL from art path (static fallback for wallets without HTML support)
+  let imageUrl = `${APP_URL}/placeholder-card.png`;
   if (card.raw_art_path) {
     const clean = card.raw_art_path.replace(/^raw-arts\//, '');
     imageUrl = `${SUPABASE_URL}/storage/v1/object/public/raw-arts/${clean}`;
@@ -54,11 +58,15 @@ export async function GET(
     symbol: 'SHAPE',
     description: card.art_description || card.flavor_text || `A ${card.rarity_tier || ''} ${card.card_type || ''} card from Shape Cards`.trim(),
     image: imageUrl,
+    animation_url: animationUrl,
     external_url: 'https://theshapegame.app',
     attributes,
     properties: {
-      files: [{ uri: imageUrl, type: 'image/png' }],
-      category: 'image',
+      files: [
+        { uri: imageUrl, type: 'image/png' },
+        { uri: animationUrl, type: 'text/html' },
+      ],
+      category: 'html',
     },
   };
 

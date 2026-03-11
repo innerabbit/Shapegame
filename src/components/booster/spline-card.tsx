@@ -139,8 +139,6 @@ function findTextObject(
   return matches[matches.length - 1];
 }
 
-let discoveryCount = 0;
-
 function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0) {
   const app = spline as any;
   const scene = findScene(app);
@@ -155,22 +153,8 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
     return;
   }
 
-  // Expose for debugging
-  if (typeof window !== 'undefined') {
-    if (!(window as any).__splineApps) (window as any).__splineApps = [];
-    if (!(window as any).__splineApps.includes(spline)) {
-      (window as any).__splineApps.push(spline);
-    }
-  }
-
   // Build text object map from scene traversal (handles duplicates + trimmed names)
   const textMap = buildTextObjectMap(scene);
-
-  // Discovery logging (first instance only)
-  if (discoveryCount < 1) {
-    discoveryCount++;
-    console.log(`[Spline] Card "${content.title}" — found ${textMap.size} text object names`);
-  }
 
   // Skip text re-apply if title already matches (safety-net dedup),
   // but always allow art texture updates through
@@ -207,9 +191,7 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
       }
     }
 
-    Promise.all(setTextPromises).then(() => {
-      console.log(`[Spline] ✅ "${content.title}" — ${setTextPromises.length} text fields applied`);
-    });
+    Promise.all(setTextPromises).catch(() => {});
   }
 
   // Update card art texture if URL provided
@@ -236,7 +218,7 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
               .then(() => {
                 if (sharedAssets?.requestRender) sharedAssets.requestRender();
                 else if (app.requestRender) app.requestRender();
-                console.log('[Spline] ✅ CardArt texture applied');
+                // texture applied successfully
               })
               .catch((e: any) => console.warn('[Spline] ❌ CardArt texture update failed:', e));
           }
@@ -288,7 +270,6 @@ export const SplineCard = forwardRef<SplineCardHandle, SplineCardProps>(
         if (!app) return;
         try {
           app.emitEvent('mouseDown', flipObjectName);
-          console.log(`[Spline] 🔄 flip → "${flipObjectName}"`);
         } catch (e) {
           console.warn(`[Spline] ❌ emitEvent failed:`, e);
         }

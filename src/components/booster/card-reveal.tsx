@@ -2,9 +2,8 @@
 
 import { forwardRef, useMemo } from 'react';
 import { SplineCard, type SplineCardContent, type SplineCardHandle } from './spline-card';
-import type { RarityTier, ManaColor, ShapeType, MaterialType, CardType } from '@/types/cards';
+import type { RarityTier, ManaColor, ShapeType, MaterialType, CardType, BackgroundType } from '@/types/cards';
 import { RARITY_LABELS } from '@/lib/constants';
-import type { BackgroundType } from '@/types/cards';
 
 /** Same-origin proxy URL for card art (avoids WebGL CORS issues with Supabase Storage) */
 function fullArtUrl(path: string | null | undefined, cacheBust?: number): string | undefined {

@@ -45,6 +45,7 @@ export default function CardsV2Page() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [generatingArt, setGeneratingArt] = useState(false);
   const [artVersion, setArtVersion] = useState(0); // cache-bust for art images
 
   const [error, setError] = useState<string | null>(null);
@@ -162,37 +163,47 @@ export default function CardsV2Page() {
 
   // Save edited description
   const saveDescription = async (cardId: string, desc: string) => {
-    const res = await fetch('/api/cards/' + cardId + '/status', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ art_description: desc }),
-    });
-    if (res.ok) {
-      toast.success('Description saved');
-      setEditingDesc(false);
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, art_description: desc } : c));
-      if (selectedCard?.id === cardId) {
-        setSelectedCard(prev => prev ? { ...prev, art_description: desc } : null);
+    try {
+      const res = await fetch('/api/cards/' + cardId + '/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ art_description: desc }),
+      });
+      if (res.ok) {
+        toast.success('Description saved');
+        setEditingDesc(false);
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, art_description: desc } : c));
+        if (selectedCard?.id === cardId) {
+          setSelectedCard(prev => prev ? { ...prev, art_description: desc } : null);
+        }
+      } else {
+        toast.error('Failed to save description');
       }
+    } catch {
+      toast.error('Network error saving description');
     }
   };
 
   // Save edited name
   const saveName = async (cardId: string, newName: string) => {
-    const res = await fetch('/api/cards/' + cardId + '/status', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: newName }),
-    });
-    if (res.ok) {
-      toast.success('Name saved');
-      setEditingName(false);
-      setCards(prev => prev.map(c => c.id === cardId ? { ...c, name: newName } : c));
-      if (selectedCard?.id === cardId) {
-        setSelectedCard(prev => prev ? { ...prev, name: newName } : null);
+    try {
+      const res = await fetch('/api/cards/' + cardId + '/status', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+      if (res.ok) {
+        toast.success('Name saved');
+        setEditingName(false);
+        setCards(prev => prev.map(c => c.id === cardId ? { ...c, name: newName } : c));
+        if (selectedCard?.id === cardId) {
+          setSelectedCard(prev => prev ? { ...prev, name: newName } : null);
+        }
+      } else {
+        toast.error('Failed to save name');
       }
-    } else {
-      toast.error('Failed to save name');
+    } catch {
+      toast.error('Network error saving name');
     }
   };
 
@@ -252,10 +263,11 @@ export default function CardsV2Page() {
 
     // Process in batches of 5
     const batchSize = 5;
+    let failedCount = 0;
     for (let i = 0; i < targetCards.length; i += batchSize) {
       const batch = targetCards.slice(i, i + batchSize);
       try {
-        await fetch('/api/cards/generate-description', {
+        const res = await fetch('/api/cards/generate-description', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -263,12 +275,19 @@ export default function CardsV2Page() {
             forceRegenerate: bulkTarget === 'all',
           }),
         });
-      } catch {}
+        if (!res.ok) failedCount += batch.length;
+      } catch {
+        failedCount += batch.length;
+      }
       setBulkProgress({ done: Math.min(i + batchSize, targetCards.length), total: targetCards.length });
     }
 
     setBulkProcessing(false);
-    toast.success('Bulk generation complete');
+    if (failedCount > 0) {
+      toast.warning(`Done: ${targetCards.length - failedCount}/${targetCards.length} generated (${failedCount} failed — retry with "Missing only")`);
+    } else {
+      toast.success(`All ${targetCards.length} descriptions generated`);
+    }
     fetchCards();
   };
 
@@ -814,9 +833,9 @@ export default function CardsV2Page() {
             {selectedCard.art_description && (
               <button
                 className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-neutral-700 text-white py-2 rounded text-sm font-medium"
-                disabled={generatingDesc}
+                disabled={generatingArt}
                 onClick={async () => {
-                  setGeneratingDesc(true);
+                  setGeneratingArt(true);
                   try {
                     const res = await fetch('/api/generate/art', {
                       method: 'POST',
@@ -829,12 +848,9 @@ export default function CardsV2Page() {
                     const data = await res.json();
                     if (data.success) {
                       toast.success('Art generated!');
-                      // Update only this card in state — no full refetch
                       const updatedCard = data.card as CardV2;
                       setCards(prev => prev.map(c =>
-                        c.id === selectedCard.id
-                          ? { ...c, ...updatedCard, rarity_tier: updatedCard.rarity_tier ?? (updatedCard as any).rarity }
-                          : c
+                        c.id === selectedCard.id ? { ...c, ...updatedCard } : c
                       ));
                       setArtVersion(v => v + 1);
                       setSelectedCard(prev => prev
@@ -847,10 +863,10 @@ export default function CardsV2Page() {
                   } catch (err) {
                     toast.error('Network error generating art');
                   }
-                  setGeneratingDesc(false);
+                  setGeneratingArt(false);
                 }}
               >
-                {generatingDesc ? 'Generating Art...' : selectedCard.raw_art_path ? '🎨 Regenerate Art' : '🎨 Generate Art'}
+                {generatingArt ? 'Generating Art...' : selectedCard.raw_art_path ? '🎨 Regenerate Art' : '🎨 Generate Art'}
               </button>
             )}
           </div>

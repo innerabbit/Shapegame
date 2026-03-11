@@ -48,8 +48,10 @@ function pickBoosterPack(pool: any[]): any[] {
     usedIds.add(guaranteed.id || guaranteed.card_number);
   }
 
-  // Fill remaining slots
-  while (pack.length < 6) {
+  // Fill remaining slots (safety valve: max 100 iterations to prevent infinite loop)
+  let iterations = 0;
+  while (pack.length < 6 && iterations < 100) {
+    iterations++;
     const rarity = weightedPick(RARITY_ORDER, RARITY_ORDER.map(r => RARITY_WEIGHTS[r]));
     const candidates = byRarity[rarity].filter(
       c => !usedIds.has(c.id || c.card_number)
@@ -60,6 +62,16 @@ function pickBoosterPack(pool: any[]): any[] {
     const card = candidates[Math.floor(Math.random() * candidates.length)];
     pack.push(card);
     usedIds.add(card.id || card.card_number);
+  }
+
+  // If still short after max iterations, fill from any available card
+  if (pack.length < 6) {
+    const allRemaining = pool.filter(c => !usedIds.has(c.id || c.card_number));
+    while (pack.length < 6 && allRemaining.length > 0) {
+      const card = allRemaining.splice(Math.floor(Math.random() * allRemaining.length), 1)[0];
+      pack.push(card);
+      usedIds.add(card.id || card.card_number);
+    }
   }
 
   // Sort: commons first, legendaries last

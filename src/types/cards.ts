@@ -39,7 +39,6 @@ export interface Perk {
   description: string;
 }
 
-// Legacy ability types (kept for old code)
 export type AbilityName =
   | 'Burn' | 'Shield' | 'Heal' | 'Grow'
   | 'Counter' | 'Drain' | 'Combo' | 'Overload';

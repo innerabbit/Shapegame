@@ -44,11 +44,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  // DB column is "rarity" but frontend expects "rarity_tier" — alias it
-  const mapped = (data || []).map((c: any) => ({
-    ...c,
-    rarity_tier: c.rarity_tier ?? c.rarity,
-  }));
-
-  return NextResponse.json(mapped);
+  return NextResponse.json(data || []);
 }

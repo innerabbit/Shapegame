@@ -15,9 +15,10 @@ import { cardToSplineContent } from '@/components/booster/card-reveal';
 type FilterStatus = 'all' | 'no-description' | 'no-art' | 'complete';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
-function artUrl(path: string | null | undefined): string | null {
+function artUrl(path: string | null | undefined, cacheBust?: number): string | null {
   if (!path) return null;
-  return `${SUPABASE_URL}/storage/v1/object/public/raw-arts/${path.replace(/^raw-arts\//, '')}`;
+  const base = `${SUPABASE_URL}/storage/v1/object/public/raw-arts/${path.replace(/^raw-arts\//, '')}`;
+  return cacheBust ? `${base}?v=${cacheBust}` : base;
 }
 
 export default function CardsV2Page() {
@@ -44,6 +45,7 @@ export default function CardsV2Page() {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
+  const [artVersion, setArtVersion] = useState(0); // cache-bust for art images
 
   const [error, setError] = useState<string | null>(null);
 
@@ -438,7 +440,7 @@ export default function CardsV2Page() {
         <div className={`flex-1 ${selectedCard ? 'max-w-[55%]' : ''}`}>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {filteredCards.map(card => {
-              const thumb = artUrl(card.raw_art_path);
+              const thumb = artUrl(card.raw_art_path, artVersion);
               return (
                 <div
                   key={card.id}
@@ -654,7 +656,7 @@ export default function CardsV2Page() {
               {selectedCard.raw_art_path && (
                 <div className="flex-1 bg-neutral-800 rounded-lg overflow-hidden">
                   <img
-                    src={artUrl(selectedCard.raw_art_path)!}
+                    src={artUrl(selectedCard.raw_art_path, artVersion)!}
                     alt={selectedCard.name || ''}
                     className="w-full aspect-[4/3] object-cover"
                   />
@@ -755,6 +757,7 @@ export default function CardsV2Page() {
                     if (data.success) {
                       toast.success('Art generated!');
                       await fetchCards();
+                      setArtVersion(v => v + 1);
                       setSelectedCard(prev => prev ? { ...prev, raw_art_path: data.filePath } : null);
                     } else {
                       toast.error(data.error || 'Art generation failed');

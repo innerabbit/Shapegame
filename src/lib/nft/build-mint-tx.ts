@@ -7,7 +7,6 @@ import {
   type Umi,
 } from '@metaplex-foundation/umi';
 import { create, fetchCollection } from '@metaplex-foundation/mpl-core';
-import { base64 } from '@metaplex-foundation/umi/serializers';
 import { COLLECTION_ADDRESS, METADATA_BASE_URL, CARDS_PER_TX } from './config';
 import type { BoosterCard } from './pick-booster';
 
@@ -69,8 +68,8 @@ export async function buildMintTransactions(
       .buildAndSign(umi);
 
     const serialized = umi.transactions.serialize(tx);
-    const encoded = base64.deserialize(serialized)[0];
-    transactions.push(encoded as string);
+    const encoded = Buffer.from(serialized).toString('base64');
+    transactions.push(encoded);
   }
 
   return { transactions, mintAddresses };

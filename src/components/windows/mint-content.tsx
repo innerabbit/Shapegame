@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useConnection } from '@solana/wallet-adapter-react';
-import { Transaction } from '@solana/web3.js';
+import { VersionedTransaction } from '@solana/web3.js';
 import { useAuth } from '@/hooks/use-auth';
 import { BoosterOverlay } from '@/components/booster/booster-overlay';
 
@@ -53,6 +53,7 @@ export function MintContent() {
   const [mintedCards, setMintedCards] = useState<any[] | null>(null);
   const [showBooster, setShowBooster] = useState(false);
   const [txSignatures, setTxSignatures] = useState<string[]>([]);
+  const [packOpened, setPackOpened] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -122,6 +123,7 @@ export function MintContent() {
     setError(null);
     setMintedCards(null);
     setTxSignatures([]);
+    setPackOpened(false);
 
     try {
       const mintRes = await fetch('/api/nft/mint-booster', { method: 'POST' });
@@ -142,7 +144,7 @@ export function MintContent() {
       for (let i = 0; i < transactions.length; i++) {
         setStage(i === 0 ? 'signing_1' : 'signing_2');
         const txBuffer = Buffer.from(transactions[i], 'base64');
-        const tx = Transaction.from(txBuffer);
+        const tx = VersionedTransaction.deserialize(txBuffer);
         const signedTx = await signTransaction(tx);
         setStage(i === 0 ? 'confirming_1' : 'confirming_2');
         const rawTx = signedTx.serialize();
@@ -190,6 +192,8 @@ export function MintContent() {
   };
 
   const isProcessing = !['idle', 'done', 'error', 'partial'].includes(stage);
+  const holdingMinutes = status?.holdingPeriodMinutes ?? 2;
+  const cooldownMinutes = status?.cooldownMinutes ?? 2;
 
   const stageLabels: Record<MintStage, string> = {
     idle: '',
@@ -205,226 +209,264 @@ export function MintContent() {
     partial: 'Partially minted',
   };
 
-  const holdingMinutes = status?.holdingPeriodMinutes ?? 2;
-  const cooldownMinutes = status?.cooldownMinutes ?? 2;
+  // ── Derive current step ──
+  const currentStep: number =
+    !connected || !isAuthenticated ? 1
+    : loading ? 1
+    : !status?.hasEnoughBalance ? 2
+    : holdingCountdown > 0 || !status?.holdingComplete ? 2
+    : stage === 'done' && !packOpened ? 4
+    : stage === 'done' && packOpened ? 3 // after opening, show mint again
+    : 3;
+
+  const walletAddr = publicKey?.toBase58();
+  const shortAddr = walletAddr ? `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}` : '';
+
+  // ── Step renderer ──
+  const renderStep = (
+    stepNum: number,
+    title: string,
+    state: 'done' | 'active' | 'pending',
+    summary: string,
+    content: React.ReactNode,
+  ) => (
+    <div
+      className={`p-3 border rounded-sm ${
+        state === 'done'
+          ? 'border-[#22a846] bg-[#f0fff0]'
+          : state === 'active'
+          ? 'border-[#003c74] bg-[#f0f4ff]'
+          : 'border-[#ccc] bg-[#f5f5f5] opacity-50'
+      }`}
+    >
+      <div className="flex items-center gap-2 text-[12px]">
+        <span className="shrink-0">
+          {state === 'done' ? '✅' : state === 'active' ? `${stepNum}.` : '🔒'}
+        </span>
+        <span className={`font-bold ${state === 'done' ? 'text-[#006600]' : state === 'pending' ? 'text-[#999]' : 'text-[#003c74]'}`}>
+          {title}
+        </span>
+        {state === 'done' && (
+          <span className="text-[#666] text-[11px] ml-auto">{summary}</span>
+        )}
+      </div>
+      {state === 'active' && (
+        <div className="mt-3">{content}</div>
+      )}
+    </div>
+  );
+
+  const mintAgain = () => {
+    setStage('idle');
+    setError(null);
+    setMintedCards(null);
+    setTxSignatures([]);
+    setPackOpened(false);
+    fetchStatus();
+  };
 
   return (
     <>
-      <div className="space-y-4">
-        {/* Header */}
-        <fieldset className="xp-groupbox">
-          <legend className="xp-groupbox-legend">Free NFT Mint</legend>
-          <p className="text-[11px] text-[#444] mb-2">
-            Mint 6 random NFT cards on Solana for free. Hold SOL for {holdingMinutes} min, then mint every {cooldownMinutes} min.
-          </p>
-          <div className="flex gap-3 text-[11px]">
-            <div className="border border-[#c3c0b6] bg-white px-2 py-1">
-              <span className="text-[#888]">Cards per pack:</span>{' '}
-              <span className="font-bold">6</span>
-            </div>
-            <div className="border border-[#c3c0b6] bg-white px-2 py-1">
-              <span className="text-[#888]">Cost:</span>{' '}
-              <span className="font-bold text-[#22a846]">FREE</span>
-            </div>
-            <div className="border border-[#c3c0b6] bg-white px-2 py-1">
-              <span className="text-[#888]">Network:</span>{' '}
-              <span className="font-bold">Solana</span>
-            </div>
-          </div>
-        </fieldset>
+      <div className="space-y-2">
+        {/* ── Step 1: Connect Wallet ── */}
+        {renderStep(
+          1,
+          'Connect Wallet',
+          currentStep > 1 ? 'done' : 'active',
+          connected ? `${shortAddr} · ${status?.currentBalance?.toFixed(2) ?? '...'} SOL` : '',
+          <div className="text-center py-2">
+            <p className="text-[11px] text-[#444] mb-3">
+              Connect your Solana wallet to start
+            </p>
+            <button
+              onClick={() => setVisible(true)}
+              className="xp-button xp-button-primary px-6 py-[6px] text-[12px] font-bold"
+            >
+              👛 Connect Wallet
+            </button>
+          </div>,
+        )}
 
-        {/* Status panel */}
-        <fieldset className="xp-groupbox">
-          <legend className="xp-groupbox-legend">Mint Status</legend>
-
-          {!connected ? (
-            <div className="text-center py-4">
-              <p className="text-[11px] text-[#666] mb-3">Connect your Solana wallet to mint free NFT cards</p>
-              <button
-                onClick={() => setVisible(true)}
-                className="xp-button xp-button-primary px-4 py-[4px] text-[12px]"
-              >
-                Connect Wallet
-              </button>
-            </div>
-          ) : !isAuthenticated ? (
-            <div className="text-center py-4">
-              <p className="text-[11px] text-[#666]">Sign in with your wallet to continue...</p>
-            </div>
-          ) : loading ? (
-            <div className="text-center py-4">
-              <p className="text-[11px] text-[#666]">Loading mint status...</p>
-            </div>
-          ) : status ? (
-            <div className="space-y-3">
-              {/* Balance */}
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[#666]">Wallet Balance:</span>
-                <span className={`font-bold ${status.hasEnoughBalance ? 'text-[#22a846]' : 'text-[#cc0000]'}`}>
-                  {status.currentBalance.toFixed(4)} SOL
-                </span>
-              </div>
-
-              {/* Holding period countdown */}
-              {holdingCountdown > 0 && (
-                <div className="border border-[#003c74] bg-[#f0f4ff] p-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#003c74] font-bold">Hold SOL to unlock minting:</span>
-                    <span className="font-bold text-[#003c74] font-mono text-[16px]">
-                      {formatTime(holdingCountdown)}
-                    </span>
-                  </div>
-                  <div className="xp-progress mt-1 h-[10px]">
-                    <div
-                      className="h-full bg-[#003c74] transition-all duration-1000"
-                      style={{
-                        width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="text-[10px] text-[#666] mt-1">
-                    Keep at least {status.requiredBalance} SOL in your wallet
-                  </p>
-                </div>
-              )}
-              {status.holdingComplete && !holdingCountdown && (
+        {/* ── Step 2: Hold SOL ── */}
+        {renderStep(
+          2,
+          'Hold SOL',
+          currentStep > 2 ? 'done' : currentStep === 2 ? 'active' : 'pending',
+          'Holding verified',
+          <div className="space-y-3">
+            {!status?.hasEnoughBalance ? (
+              <>
+                <p className="text-[11px] text-[#cc0000]">
+                  You need at least {status?.requiredBalance ?? 0.01} SOL in your wallet.
+                </p>
                 <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#666]">Holding period:</span>
-                  <span className="font-bold text-[#22a846]">Complete</span>
+                  <span className="text-[#666]">Current balance:</span>
+                  <span className="font-bold text-[#cc0000]">
+                    {status?.currentBalance?.toFixed(4) ?? '0'} SOL
+                  </span>
                 </div>
-              )}
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] text-[#444]">
+                  Keep at least {status?.requiredBalance ?? 0.01} SOL for {holdingMinutes} min to unlock free minting
+                </p>
+                {holdingCountdown > 0 && (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] text-[#003c74] font-bold">Time remaining</span>
+                      <span className="font-bold text-[#003c74] font-mono text-[18px]">
+                        {formatTime(holdingCountdown)}
+                      </span>
+                    </div>
+                    <div className="xp-progress h-[12px]">
+                      <div
+                        className="h-full bg-[#003c74] transition-all duration-1000"
+                        style={{
+                          width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
+                        }}
+                      />
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>,
+        )}
 
-              {/* Cooldown countdown */}
-              {countdown > 0 && (
-                <div className="border border-[#eab308] bg-[#fff8e8] p-2">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#996600] font-bold">Next mint available in:</span>
-                    <span className="font-bold text-[#996600] font-mono text-[16px]">
-                      {formatTime(countdown)}
-                    </span>
-                  </div>
-                  <div className="xp-progress mt-1 h-[10px]">
-                    <div
-                      className="h-full bg-[#eab308] transition-all duration-1000"
-                      style={{
-                        width: `${Math.max(0, 100 - (countdown / (cooldownMinutes * 60)) * 100)}%`,
-                      }}
-                    />
-                  </div>
+        {/* ── Step 3: Mint ── */}
+        {renderStep(
+          3,
+          'Mint Your Pack',
+          stage === 'done' ? 'done' : currentStep === 3 ? 'active' : 'pending',
+          '6 cards minted!',
+          <div className="space-y-3">
+            {/* Progress indicator during mint */}
+            {isProcessing && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-[#003c74] font-bold">{stageLabels[stage]}</p>
+                <div className="xp-progress h-[10px]">
+                  <div
+                    className="h-full bg-[#003c74] transition-all duration-300"
+                    style={{
+                      width: `${
+                        stage === 'building' ? 15 :
+                        stage === 'signing_1' ? 30 :
+                        stage === 'confirming_1' ? 45 :
+                        stage === 'signing_2' ? 60 :
+                        stage === 'confirming_2' ? 75 :
+                        stage === 'saving' ? 90 : 0
+                      }%`,
+                    }}
+                  />
                 </div>
-              )}
-
-              {/* Total mints */}
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[#666]">Total Packs Minted:</span>
-                <span className="font-bold">{status.totalMints}</span>
               </div>
+            )}
 
-              {/* Balance warning */}
-              {!status.hasEnoughBalance && (
-                <div className="border border-[#cc0000] bg-[#fff0f0] p-2 text-[11px] text-[#cc0000]">
-                  Insufficient SOL balance. You need at least {status.requiredBalance} SOL.
+            {/* Error */}
+            {error && (
+              <div className={`border p-2 text-[11px] rounded-sm ${
+                stage === 'partial'
+                  ? 'border-[#eab308] bg-[#fff8e8] text-[#996600]'
+                  : 'border-[#cc0000] bg-[#fff0f0] text-[#cc0000]'
+              }`}>
+                {error}
+              </div>
+            )}
+
+            {/* Cooldown */}
+            {countdown > 0 && !isProcessing && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-[#996600] font-bold">Next mint in</span>
+                  <span className="font-bold text-[#996600] font-mono text-[18px]">
+                    {formatTime(countdown)}
+                  </span>
                 </div>
-              )}
-            </div>
-          ) : null}
-        </fieldset>
-
-        {/* Mint button & progress */}
-        {connected && isAuthenticated && (
-          <fieldset className="xp-groupbox">
-            <legend className="xp-groupbox-legend">Mint</legend>
-            <div className="space-y-3">
-              {/* Progress indicator */}
-              {isProcessing && (
-                <div className="border border-[#003c74] bg-[#e8f0fe] p-2">
-                  <p className="text-[11px] text-[#003c74] font-bold">{stageLabels[stage]}</p>
-                  <div className="xp-progress mt-1 h-[8px]">
-                    <div
-                      className="h-full bg-[#003c74] transition-all duration-300"
-                      style={{
-                        width: `${
-                          stage === 'building' ? 15 :
-                          stage === 'signing_1' ? 30 :
-                          stage === 'confirming_1' ? 45 :
-                          stage === 'signing_2' ? 60 :
-                          stage === 'confirming_2' ? 75 :
-                          stage === 'saving' ? 90 : 0
-                        }%`,
-                      }}
-                    />
-                  </div>
+                <div className="xp-progress h-[10px]">
+                  <div
+                    className="h-full bg-[#eab308] transition-all duration-1000"
+                    style={{
+                      width: `${Math.max(0, 100 - (countdown / (cooldownMinutes * 60)) * 100)}%`,
+                    }}
+                  />
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Error */}
-              {error && (
-                <div className={`border p-2 text-[11px] ${
-                  stage === 'partial'
-                    ? 'border-[#eab308] bg-[#fff8e8] text-[#996600]'
-                    : 'border-[#cc0000] bg-[#fff0f0] text-[#cc0000]'
-                }`}>
-                  {error}
-                </div>
-              )}
-
-              {/* Success */}
-              {stage === 'done' && (
-                <div className="border border-[#22a846] bg-[#f0fff0] p-2 text-[11px] text-[#006600]">
-                  <p className="font-bold">6 NFT cards minted for free!</p>
-                  {txSignatures.map((sig, i) => (
-                    <a
-                      key={sig}
-                      href={`https://solscan.io/tx/${sig}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block text-[#003399] underline mt-1"
-                    >
-                      TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
-                    </a>
-                  ))}
-                </div>
-              )}
-
-              {/* Mint button */}
+            {/* Mint button */}
+            {!isProcessing && (
               <button
                 onClick={handleMint}
-                disabled={isProcessing || (status ? !status.canMint : true)}
+                disabled={status ? !status.canMint : true}
                 className={`xp-button w-full py-[8px] text-[13px] font-bold ${
-                  status?.canMint && !isProcessing ? 'xp-button-primary' : ''
+                  status?.canMint ? 'xp-button-primary' : ''
                 }`}
               >
-                {isProcessing
-                  ? stageLabels[stage]
-                  : status?.canMint
-                  ? 'Free Mint (6 NFT Cards)'
-                  : holdingCountdown > 0
-                  ? `Holding: ${formatTime(holdingCountdown)}`
-                  : countdown > 0
+                {countdown > 0
                   ? `Cooldown: ${formatTime(countdown)}`
-                  : !status?.hasEnoughBalance
-                  ? `Need ${status?.requiredBalance ?? 0.01} SOL`
-                  : 'Free Mint (6 NFT Cards)'
+                  : '🎴 Free Mint — 6 NFT Cards'
                 }
               </button>
+            )}
 
-              {stage === 'done' && (
-                <button
-                  onClick={() => setShowBooster(true)}
-                  className="xp-button w-full py-[4px] text-[11px]"
-                >
-                  View Cards
-                </button>
-              )}
-            </div>
-          </fieldset>
+            {status && (
+              <p className="text-[10px] text-[#888] text-center">
+                Total packs minted: {status.totalMints} · Free · Solana
+              </p>
+            )}
+          </div>,
+        )}
+
+        {/* ── Step 4: Open Pack ── */}
+        {renderStep(
+          4,
+          'Open Pack',
+          packOpened ? 'done' : stage === 'done' ? 'active' : 'pending',
+          'Pack opened!',
+          <div className="text-center py-2 space-y-3">
+            {txSignatures.length > 0 && (
+              <div className="text-[10px] text-[#666]">
+                {txSignatures.map((sig, i) => (
+                  <a
+                    key={sig}
+                    href={`https://solscan.io/tx/${sig}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-[#003399] underline"
+                  >
+                    TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
+                  </a>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setShowBooster(true)}
+              className="xp-button xp-button-primary px-6 py-[6px] text-[13px] font-bold w-full"
+            >
+              📦 Open Pack
+            </button>
+          </div>,
+        )}
+
+        {/* Mint again after pack opened */}
+        {packOpened && (
+          <button
+            onClick={mintAgain}
+            className="xp-button w-full py-[4px] text-[11px]"
+          >
+            🔄 Mint Another Pack
+          </button>
         )}
       </div>
 
       {/* Booster reveal overlay */}
       {showBooster && mintedCards && (
         <BoosterOverlay
-          onClose={() => setShowBooster(false)}
+          onClose={() => {
+            setShowBooster(false);
+            setPackOpened(true);
+          }}
           preloadedCards={mintedCards}
         />
       )}

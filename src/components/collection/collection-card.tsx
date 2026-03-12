@@ -9,6 +9,9 @@ import type { OwnedCardDetails } from '@/hooks/use-user-cards';
 interface CollectionCardProps {
   card: OwnedCardDetails;
   onClick?: () => void;
+  size?: 'sm' | 'md';
+  badge?: string;
+  dimmed?: boolean;
 }
 
 const RARITY_GLOW: Record<string, string> = {
@@ -63,7 +66,8 @@ function cardDisplayFields(card: OwnedCardDetails) {
   };
 }
 
-export function CollectionCard({ card, onClick }: CollectionCardProps) {
+export function CollectionCard({ card, onClick, size = 'md', badge, dimmed }: CollectionCardProps) {
+  const compact = size === 'sm';
   const cardRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isHovered, setIsHovered] = useState(false);
@@ -183,9 +187,21 @@ export function CollectionCard({ card, onClick }: CollectionCardProps) {
           </div>
         </div>
 
+        {/* Badge overlay (e.g. "x2") */}
+        {badge && (
+          <div className="absolute top-1 left-1 z-30 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-sm">
+            {badge}
+          </div>
+        )}
+
+        {/* Dimmed overlay */}
+        {dimmed && (
+          <div className="absolute inset-0 z-30 bg-black/60 rounded-xl" />
+        )}
+
         {/* Bottom content — matches Spline card layout */}
         <div
-          className="absolute bottom-0 inset-x-0 z-20 px-2.5 pb-2.5 pt-8"
+          className={`absolute bottom-0 inset-x-0 z-20 px-2.5 pt-8 ${compact ? 'pb-1.5' : 'pb-2.5'}`}
           style={{ background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.6) 50%, transparent 100%)' }}
         >
           {/* Title */}
@@ -205,8 +221,8 @@ export function CollectionCard({ card, onClick }: CollectionCardProps) {
             </div>
           )}
 
-          {/* Perk/ability */}
-          {display.description && (
+          {/* Perk/ability — hidden in compact mode */}
+          {!compact && display.description && (
             <div className="text-[8px] text-white/50 mt-1 line-clamp-2 leading-tight">
               {display.description}
             </div>

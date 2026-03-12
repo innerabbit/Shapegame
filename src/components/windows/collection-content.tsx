@@ -67,7 +67,7 @@ export function CollectionContent() {
       </div>
 
       {activeTab === 'decks' ? (
-        <DecksContent />
+        <DecksContent ownedCards={ownedCards} cardsLoading={isLoading} />
       ) : (
         <CardsTab
           ownedCards={ownedCards}

@@ -40,6 +40,7 @@ export function MintContent() {
   const [showBooster, setShowBooster] = useState(false);
   const [txSignatures, setTxSignatures] = useState<string[]>([]);
   const [packOpened, setPackOpened] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStatus = useCallback(async () => {
@@ -333,9 +334,12 @@ export function MintContent() {
             )}
 
             {/* Mint button — visible when not holding and not processing */}
-            {!holdingActive && !isProcessing && (
+            {!holdingActive && !isProcessing && !showConfirm && (
               <button
-                onClick={handleMint}
+                onClick={() => {
+                  if (!connected || !publicKey) { setVisible(true); return; }
+                  setShowConfirm(true);
+                }}
                 disabled={status ? !status.canMint : true}
                 className={`xp-button w-full py-[8px] text-[13px] font-bold ${
                   status?.canMint ? 'xp-button-primary' : ''
@@ -346,6 +350,29 @@ export function MintContent() {
                   : '🎴 Free Mint — 3 NFT Cards'
                 }
               </button>
+            )}
+
+            {/* Mint confirmation */}
+            {showConfirm && !isProcessing && (
+              <div className="border border-[#003c74] bg-[#f0f4ff] rounded-sm p-3 space-y-3">
+                <p className="text-[12px] text-[#003c74] font-bold text-center">
+                  Mint 3 NFT cards to your wallet?
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setShowConfirm(false); handleMint(); }}
+                    className="xp-button xp-button-primary flex-1 py-[6px] text-[13px] font-bold"
+                  >
+                    Mint!
+                  </button>
+                  <button
+                    onClick={() => setShowConfirm(false)}
+                    className="xp-button flex-1 py-[6px] text-[13px]"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
             )}
 
             {status && (
@@ -406,6 +433,7 @@ export function MintContent() {
             setPackOpened(true);
           }}
           preloadedCards={mintedCards}
+          txSignatures={txSignatures}
         />
       )}
     </>

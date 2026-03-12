@@ -129,16 +129,7 @@ function CardsTab({
         {collectionAddress && (
           <div className="flex items-center gap-3">
             <a
-              href={`https://magiceden.io/marketplace/${collectionAddress}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-[10px] text-[#003399] hover:underline flex items-center gap-1"
-            >
-              <img src="/me-icon.png" alt="" className="w-3.5 h-3.5" />
-              Magic Eden
-            </a>
-            <a
-              href={`https://solscan.io/account/${collectionAddress}`}
+              href={`https://solscan.io/token/${collectionAddress}#transactions`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-[10px] text-[#003399] hover:underline flex items-center gap-1"

@@ -6,28 +6,17 @@ import { SplineBooster, type SplineBoosterHandle } from './spline-booster';
 import { CardReveal, type CardData } from './card-reveal';
 import { PackParticles } from './particles';
 import { fetchBoosterPack } from '@/lib/cards/fetch-pack';
-import type { RarityTier } from '@/types/cards';
-import { MANA_COLORS, RARITY_LABELS } from '@/lib/constants';
 import type { SplineCardHandle } from './spline-card';
 
-// ── Rarity colors ─────────────────────────────────────────────
-
-const RARITY_HEX: Record<RarityTier, string> = {
-  common: '#6b7280',
-  uncommon: '#22c55e',
-  rare: '#3b82f6',
-  epic: '#a855f7',
-  legendary: '#eab308',
-};
-
-type OverlayStage = 'pack' | 'revealing' | 'summary';
+type OverlayStage = 'pack' | 'revealing';
 
 interface BoosterOverlayProps {
   onClose: () => void;
   preloadedCards?: CardData[];
+  txSignatures?: string[];
 }
 
-export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps) {
+export function BoosterOverlay({ onClose, preloadedCards, txSignatures }: BoosterOverlayProps) {
   const [cards, setCards] = useState<CardData[]>(preloadedCards ?? []);
   const [packLoading, setPackLoading] = useState(!preloadedCards);
   const [stage, setStage] = useState<OverlayStage>('pack');
@@ -101,30 +90,12 @@ export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps)
     });
   }, [cards, revealed]);
 
-  const handleNewPack = useCallback(() => {
-    setPackLoading(true);
-    setStage('pack');
-    setBoosterReady(false);
-    setBoosterOpening(false);
-    setRevealed([]);
-    setShowParticles(false);
-    revealAllTimers.current.forEach(clearTimeout);
-    revealAllTimers.current = [];
-
-    fetchBoosterPack().then(result => {
-      setCards(result.cards);
-      setPackLoading(false);
-    });
-  }, []);
-
-  // ── Hint text ──────────────────────────────────────────────────
+  // ── Hint text (pack stage only) ─────────────────────────────────
 
   const hintText =
     packLoading ? 'Loading pack...' :
     stage === 'pack' && boosterReady && !boosterOpening ? 'Click the pack to open' :
     stage === 'pack' && boosterOpening ? 'Opening...' :
-    stage === 'revealing' && !allRevealed ? `Click cards to reveal \u2022 ${revealed.length}/${cards.length}` :
-    stage === 'revealing' && allRevealed ? `All ${cards.length} cards revealed!` :
     null;
 
   return createPortal(
@@ -134,16 +105,14 @@ export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps)
       <PackParticles active={showParticles} />
 
       {/* Close X — top right */}
-      {stage !== 'summary' && (
-        <button
+      <button
           onClick={onClose}
           className="absolute top-3 right-3 z-[60] w-8 h-8 flex items-center justify-center rounded-sm"
           aria-label="Close"
           style={{ background: 'rgba(0,0,0,0.5)' }}
         >
           <svg width="14" height="14" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="white" strokeWidth="1.5"/></svg>
-        </button>
-      )}
+      </button>
 
       {/* Booster Pack + centered hint */}
       {stage === 'pack' && (
@@ -184,22 +153,6 @@ export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps)
         </div>
       )}
 
-      {/* Reveal hint — top center */}
-      {stage === 'revealing' && hintText && (
-        <div
-          className="absolute top-4 left-1/2 -translate-x-1/2 z-[60]"
-          style={{
-            opacity: visible ? 1 : 0,
-            transform: `translateX(-50%) translateY(${visible ? 0 : -20}px)`,
-            transition: 'opacity 0.3s ease-out, transform 0.3s ease-out',
-          }}
-        >
-          <div className="xp-window p-0">
-            <div className="px-4 py-1.5 text-[11px] text-[#222]">{hintText}</div>
-          </div>
-        </div>
-      )}
-
       {/* Cards — 6 Spline 3D cards */}
       {stage === 'revealing' && (
         <div className="absolute inset-0 z-[52] flex items-center justify-center pt-10 pb-16">
@@ -223,37 +176,25 @@ export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps)
         </div>
       )}
 
-      {/* Bottom bar — reveal all / view stats */}
-      {stage === 'revealing' && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-2">
-          {!allRevealed && (
-            <button
-              onClick={handleRevealAll}
-              className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"
+      {/* Bottom bar — Claim after all revealed */}
+      {stage === 'revealing' && allRevealed && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[60] flex flex-col items-center gap-1.5">
+          <button
+            onClick={onClose}
+            className="xp-button xp-button-primary px-8 py-2 text-[13px] font-bold whitespace-nowrap"
+          >
+            Claim
+          </button>
+          {txSignatures?.[0] && (
+            <a
+              href={`https://solscan.io/tx/${txSignatures[0]}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] text-white/60 hover:text-white/90 transition-colors"
             >
-              Reveal All
-            </button>
+              Proof: {txSignatures[0].slice(0, 8)}...{txSignatures[0].slice(-8)} ↗
+            </a>
           )}
-
-          {allRevealed && (
-            <button
-              onClick={() => setStage('summary')}
-              className="xp-button px-4 py-1.5 text-[11px] whitespace-nowrap"
-            >
-              View Stats
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Summary */}
-      {stage === 'summary' && (
-        <div className="absolute inset-0 z-[70] flex items-center justify-center animate-fade-in">
-          <PackSummary
-            cards={cards}
-            onNewPack={handleNewPack}
-            onClose={onClose}
-          />
         </div>
       )}
     </div>,
@@ -261,59 +202,3 @@ export function BoosterOverlay({ onClose, preloadedCards }: BoosterOverlayProps)
   );
 }
 
-// ── Pack summary ────────────────────────────────────────────────
-
-function PackSummary({ cards, onNewPack, onClose }: {
-  cards: CardData[];
-  onNewPack: () => void;
-  onClose: () => void;
-}) {
-  const bestCard = cards.reduce((best, c) => {
-    const order: RarityTier[] = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-    return order.indexOf(c.rarity_tier) > order.indexOf(best.rarity_tier) ? c : best;
-  }, cards[0]);
-
-  return (
-    <div
-      className="xp-window animate-scale-in"
-      style={{ maxWidth: 360, width: '90%' }}
-    >
-      <div className="xp-title-bar">
-        <div className="flex items-center gap-[6px]">
-          <span className="text-sm">🎴</span>
-          <span className="xp-title-text">Pack Opened!</span>
-        </div>
-        <button className="xp-btn-close" aria-label="Close" onClick={onClose}>
-          <svg width="8" height="8" viewBox="0 0 8 8"><path d="M0 0L8 8M8 0L0 8" stroke="currentColor" strokeWidth="1.5"/></svg>
-        </button>
-      </div>
-      <div className="xp-body p-4">
-        <p className="text-[11px] text-[#666] text-center mb-3">{cards.length} cards revealed</p>
-        <div className="border p-3 mb-3 text-center" style={{ borderColor: RARITY_HEX[bestCard.rarity_tier] }}>
-          <div className="text-[10px] text-[#888] uppercase tracking-wider mb-1">Best Pull</div>
-          <div className="text-xl mb-0.5">{MANA_COLORS[bestCard.mana_color].emoji}</div>
-          <div className="text-[13px] font-bold uppercase">{bestCard.shape}</div>
-          <div className="text-[11px] font-bold uppercase" style={{ color: RARITY_HEX[bestCard.rarity_tier] }}>
-            {RARITY_LABELS[bestCard.rarity_tier]} {bestCard.material}
-          </div>
-        </div>
-        <div className="space-y-1 mb-4">
-          {cards.map((c, i) => (
-            <div key={i} className="flex items-center justify-between px-2 py-1" style={{ background: i % 2 === 0 ? '#f0f0f0' : 'transparent' }}>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs">{MANA_COLORS[c.mana_color].emoji}</span>
-                <span className="text-[11px] capitalize">{c.shape}</span>
-                <span className="text-[10px] text-[#888] capitalize">{c.material}</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase" style={{ color: RARITY_HEX[c.rarity_tier] }}>{c.rarity_tier}</span>
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <button onClick={onNewPack} className="xp-button flex-1 text-center">Open Another</button>
-          <button onClick={onClose} className="xp-button flex-1 text-center">Done</button>
-        </div>
-      </div>
-    </div>
-  );
-}

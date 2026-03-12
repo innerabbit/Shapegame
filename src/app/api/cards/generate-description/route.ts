@@ -4,46 +4,84 @@ import { createAdminClient } from '@/lib/supabase/admin';
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
-// ── Context helpers ─────────────────────────────────────
+// ── Default context maps (used as fallback if not in DB) ──
 
-function classContext(cls: string): string {
-  const map: Record<string, string> = {
-    preacher: 'church leaders, gospel, faith community',
-    hacker: 'tech underground, computer labs, dial-up era',
-    gangster: 'street hustle, corner boys, trap houses',
-    artist: 'hip-hop, graffiti, open mics, DJ battles',
-    athlete: 'basketball courts, boxing gyms, track meets',
-  };
-  return map[cls] || cls;
+const DEFAULT_CLASS_CONTEXT: Record<string, string> = {
+  preacher: 'church leaders, gospel, faith community',
+  hacker: 'tech underground, computer labs, dial-up era',
+  gangster: 'street hustle, corner boys, trap houses',
+  artist: 'hip-hop, graffiti, open mics, DJ battles',
+  athlete: 'basketball courts, boxing gyms, track meets',
+};
+
+const DEFAULT_COLOR_CONTEXT: Record<string, string> = {
+  yellow: 'faith, order, churches, gospel',
+  blue: 'technology, control, computer labs',
+  black: 'street power, hustle, nighttime',
+  red: 'art, chaos, creativity, performance',
+  green: 'sport, nature, physical force',
+  white: 'artifacts, neutral, equipment',
+};
+
+const DEFAULT_MATERIAL_CONTEXT: Record<string, string> = {
+  flat: 'cheap looking, cardboard cutout, lo-fi',
+  gradient: 'slightly better, textured, print quality',
+  '3d': 'solid, glossy, catches the flash light',
+  chrome: 'shiny metallic, mirror reflections, premium',
+  gold: 'luxurious golden gleam, heavy, rare treasure',
+};
+
+const DEFAULT_RARITY_SCALE: Record<string, string> = {
+  legendary: 'EPIC, larger-than-life composition',
+  epic: 'dramatic, powerful presence',
+  rare: 'everyday street scene',
+  uncommon: 'everyday street scene',
+  common: 'everyday street scene',
+};
+
+// ── Parse "key: value" format from DB ──
+
+function parseContextMap(text: string, fallback: Record<string, string>): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const line of text.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('//')) continue;
+    const idx = trimmed.indexOf(':');
+    if (idx === -1) continue;
+    const key = trimmed.slice(0, idx).trim().toLowerCase();
+    const val = trimmed.slice(idx + 1).trim();
+    if (key && val) map[key] = val;
+  }
+  return Object.keys(map).length > 0 ? map : fallback;
 }
 
-function colorContext(color: string): string {
-  const map: Record<string, string> = {
-    yellow: 'faith, order, churches, gospel',
-    blue: 'technology, control, computer labs',
-    black: 'street power, hustle, nighttime',
-    red: 'art, chaos, creativity, performance',
-    green: 'sport, nature, physical force',
-    white: 'artifacts, neutral, equipment',
-  };
-  return map[color] || color;
+function serializeContextMap(map: Record<string, string>): string {
+  return Object.entries(map).map(([k, v]) => `${k}: ${v}`).join('\n');
 }
 
-function materialContext(material: string): string {
-  const map: Record<string, string> = {
-    flat: 'cheap looking, cardboard cutout, lo-fi',
-    gradient: 'slightly better, textured, print quality',
-    '3d': 'solid, glossy, catches the flash light',
-    chrome: 'shiny metallic, mirror reflections, premium',
-    gold: 'luxurious golden gleam, heavy, rare treasure',
-  };
-  return map[material] || material;
+// ── Context lookup with loaded maps ──
+
+type ContextMaps = {
+  classCtx: Record<string, string>;
+  colorCtx: Record<string, string>;
+  materialCtx: Record<string, string>;
+  rarityCtx: Record<string, string>;
+};
+
+function classContext(cls: string, maps: ContextMaps): string {
+  return maps.classCtx[cls] || cls;
 }
 
-function rarityScale(tier: string): string {
-  if (tier === 'legendary') return 'EPIC, larger-than-life composition';
-  if (tier === 'epic') return 'dramatic, powerful presence';
-  return 'everyday street scene';
+function colorContext(color: string, maps: ContextMaps): string {
+  return maps.colorCtx[color] || color;
+}
+
+function materialContext(material: string, maps: ContextMaps): string {
+  return maps.materialCtx[material] || material;
+}
+
+function rarityScale(tier: string, maps: ContextMaps): string {
+  return maps.rarityCtx[tier] || 'everyday street scene';
 }
 
 // ── Template interpolation ──────────────────────────────
@@ -54,24 +92,25 @@ function interpolate(template: string, vars: Record<string, string>): string {
 
 function buildPromptFromTemplates(
   card: any,
-  templates: Record<string, string>
+  templates: Record<string, string>,
+  maps: ContextMaps,
 ): string {
   const base = templates['base'] || '';
   const type = card.card_type as string;
   const typeTemplate = templates[type];
 
   if (!typeTemplate) {
-    return `${base}\n\nCard: ${card.name} (${card.card_type}). Describe a scene for this card in Detroit 1996 VHS aesthetic.`;
+    return `${base}\n\nCard: ${card.name} (${card.card_type}). Describe a scene for this card.`;
   }
 
   const vars: Record<string, string> = {
     name: card.name || '',
     hero_class: card.hero_class || '',
-    class_context: classContext(card.hero_class || ''),
+    class_context: classContext(card.hero_class || '', maps),
     color: card.color || '',
-    color_context: colorContext(card.color || ''),
+    color_context: colorContext(card.color || '', maps),
     rarity_tier: card.rarity_tier || '',
-    rarity_scale: rarityScale(card.rarity_tier || ''),
+    rarity_scale: rarityScale(card.rarity_tier || '', maps),
     atk: String(card.atk ?? ''),
     hp: String(card.hp ?? ''),
     perk_1_name: card.perk_1_name || 'none',
@@ -81,7 +120,7 @@ function buildPromptFromTemplates(
       : '',
     shape: card.shape || '',
     material: card.material || '',
-    material_context: materialContext(card.material || ''),
+    material_context: materialContext(card.material || '', maps),
     artifact_subtype: card.artifact_subtype || '',
     ability: card.ability || '',
   };
@@ -91,7 +130,7 @@ function buildPromptFromTemplates(
 
 // ── Hardcoded fallback (used if prompts table doesn't exist yet) ──
 
-function buildDescriptionPromptFallback(card: any): string {
+function buildDescriptionPromptFallback(card: any, maps: ContextMaps): string {
   const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, warm colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
 
 Generate a vivid, cinematic visual description (2-3 sentences) for this card's artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit '96 aesthetic is mandatory.
@@ -101,25 +140,25 @@ Generate a vivid, cinematic visual description (2-3 sentences) for this card's a
   if (card.card_type === 'hero') {
     return base + `HERO CARD:
 - Name: ${card.name}
-- Class: ${card.hero_class} (${classContext(card.hero_class)})
+- Class: ${card.hero_class} (${classContext(card.hero_class, maps)})
 - Color: ${card.color}
 - Rarity: ${card.rarity_tier}
 - ATK: ${card.atk}, HP: ${card.hp}
 - Perk 1: ${card.perk_1_name || 'none'} — ${card.perk_1_desc || ''}
 ${card.perk_2_name ? `- Perk 2: ${card.perk_2_name} — ${card.perk_2_desc}` : ''}
 
-Describe this character in a Detroit '96 scene. Include their appearance, clothing, pose, and environment. The character's power level should be reflected in the scene scale — ${rarityScale(card.rarity_tier)}.`;
+Describe this character in a Detroit '96 scene. Include their appearance, clothing, pose, and environment. The character's power level should be reflected in the scene scale — ${rarityScale(card.rarity_tier, maps)}.`;
   }
 
   if (card.card_type === 'land') {
     return base + `LAND CARD (Mana Source):
 - Name: ${card.name}
-- Color: ${card.color} (${colorContext(card.color)})
+- Color: ${card.color} (${colorContext(card.color, maps)})
 - Shape: ${card.shape}
 - Material: ${card.material}
 - Rarity: ${card.rarity_tier}
 
-Describe a Detroit '96 location that embodies the ${card.color} mana color. The ${card.shape} shape in ${card.material} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: ${materialContext(card.material)}.`;
+Describe a Detroit '96 location that embodies the ${card.color} mana color. The ${card.shape} shape in ${card.material} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: ${materialContext(card.material, maps)}.`;
   }
 
   if (card.card_type === 'artifact') {
@@ -129,16 +168,60 @@ Describe a Detroit '96 location that embodies the ${card.color} mana color. The 
 - Rarity: ${card.rarity_tier}
 - Effect: ${card.ability}
 
-Describe this item in a Detroit '96 context. Show the ${card.name} as if photographed on a table, in someone's hands, or in use on the street. The item's power should match its rarity: ${rarityScale(card.rarity_tier)}.`;
+Describe this item in a Detroit '96 context. Show the ${card.name} as if photographed on a table, in someone's hands, or in use on the street. The item's power should match its rarity: ${rarityScale(card.rarity_tier, maps)}.`;
   }
 
-  return base + `Card: ${card.name} (${card.card_type}). Describe a scene for this card in Detroit 1996 VHS aesthetic.`;
+  return base + `Card: ${card.name} (${card.card_type}). Describe a scene for this card.`;
+}
+
+// ── Load context maps from DB or auto-seed defaults ──
+
+async function loadContextMaps(
+  supabase: ReturnType<typeof createAdminClient>,
+  templates: Record<string, string> | null,
+): Promise<ContextMaps> {
+  const CTX_SLUGS = {
+    ctx_class: { label: 'Context: Hero Classes', defaults: DEFAULT_CLASS_CONTEXT },
+    ctx_color: { label: 'Context: Mana Colors', defaults: DEFAULT_COLOR_CONTEXT },
+    ctx_material: { label: 'Context: Materials', defaults: DEFAULT_MATERIAL_CONTEXT },
+    ctx_rarity: { label: 'Context: Rarity Scale', defaults: DEFAULT_RARITY_SCALE },
+  } as const;
+
+  // Auto-seed missing context prompts
+  for (const [slug, { label, defaults }] of Object.entries(CTX_SLUGS)) {
+    if (!templates || !templates[slug]) {
+      try {
+        await supabase.from('prompts').upsert({
+          slug,
+          label,
+          content: serializeContextMap(defaults),
+        }, { onConflict: 'slug' });
+      } catch {
+        // Ignore — table might not exist
+      }
+    }
+  }
+
+  return {
+    classCtx: templates?.['ctx_class']
+      ? parseContextMap(templates['ctx_class'], DEFAULT_CLASS_CONTEXT)
+      : DEFAULT_CLASS_CONTEXT,
+    colorCtx: templates?.['ctx_color']
+      ? parseContextMap(templates['ctx_color'], DEFAULT_COLOR_CONTEXT)
+      : DEFAULT_COLOR_CONTEXT,
+    materialCtx: templates?.['ctx_material']
+      ? parseContextMap(templates['ctx_material'], DEFAULT_MATERIAL_CONTEXT)
+      : DEFAULT_MATERIAL_CONTEXT,
+    rarityCtx: templates?.['ctx_rarity']
+      ? parseContextMap(templates['ctx_rarity'], DEFAULT_RARITY_SCALE)
+      : DEFAULT_RARITY_SCALE,
+  };
 }
 
 // ── POST handler ────────────────────────────────────────
 
 export async function POST(request: NextRequest) {
-  const { cardIds, forceRegenerate } = await request.json();
+  const { cardIds, forceRegenerate, previewOnly } = await request.json();
 
   if (!cardIds || !Array.isArray(cardIds) || cardIds.length === 0) {
     return NextResponse.json({ error: 'cardIds array required' }, { status: 400 });
@@ -166,6 +249,9 @@ export async function POST(request: NextRequest) {
     // Table doesn't exist yet — use fallback
   }
 
+  // ── Load context maps (from DB or defaults) ──
+  const maps = await loadContextMaps(supabase, templates);
+
   // Fetch cards
   const { data: cards, error: fetchError } = await supabase
     .from('cards')
@@ -176,10 +262,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: fetchError?.message || 'Cards not found' }, { status: 404 });
   }
 
+  // ── Preview mode: return assembled prompts without calling Gemini ──
+  if (previewOnly) {
+    const previews = cards.map(card => {
+      const prompt = templates
+        ? buildPromptFromTemplates(card, templates, maps)
+        : buildDescriptionPromptFallback(card, maps);
+
+      const injectedContext: Record<string, string> = {};
+      if (card.hero_class) injectedContext.class_context = classContext(card.hero_class, maps);
+      if (card.color) injectedContext.color_context = colorContext(card.color, maps);
+      if (card.material) injectedContext.material_context = materialContext(card.material, maps);
+      if (card.rarity_tier) injectedContext.rarity_scale = rarityScale(card.rarity_tier, maps);
+
+      return {
+        cardId: card.id,
+        name: card.name,
+        fullPrompt: prompt,
+        injectedContext,
+        templateSource: templates ? 'supabase' : 'hardcoded_fallback',
+      };
+    });
+    return NextResponse.json({ previews });
+  }
+
   const results: { cardId: string; name: string; description?: string; error?: string }[] = [];
 
   for (const card of cards) {
-    // Skip if already has description and not forcing
     if (card.art_description && !forceRegenerate) {
       results.push({ cardId: card.id, name: card.name, description: card.art_description });
       continue;
@@ -187,8 +296,8 @@ export async function POST(request: NextRequest) {
 
     try {
       const prompt = templates
-        ? buildPromptFromTemplates(card, templates)
-        : buildDescriptionPromptFallback(card);
+        ? buildPromptFromTemplates(card, templates, maps)
+        : buildDescriptionPromptFallback(card, maps);
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-lite',
@@ -202,7 +311,6 @@ export async function POST(request: NextRequest) {
         continue;
       }
 
-      // Save to DB
       const { error: updateError } = await supabase
         .from('cards')
         .update({ art_description: description })

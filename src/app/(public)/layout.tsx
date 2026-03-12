@@ -9,9 +9,8 @@ import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
 
 const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
   { id: 'onboarding', icon: '🏠', label: 'Welcome' },
-  { id: 'shop', icon: '🛒', label: 'Shop' },
+  { id: 'shop', icon: '🎴', label: 'Free Mint' },
   { id: 'collection', icon: '🃏', label: 'Collection' },
-  { id: 'decks', icon: '📋', label: 'Deck Builder' },
   { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
 ];
 

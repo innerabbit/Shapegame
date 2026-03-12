@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type WindowId = 'onboarding' | 'shop' | 'collection' | 'decks' | 'leaderboard';
+export type WindowId = 'onboarding' | 'shop' | 'collection' | 'leaderboard';
 
 export interface WindowState {
   id: WindowId;
@@ -15,9 +15,8 @@ export interface WindowState {
 
 const WINDOW_DEFS: { id: WindowId; title: string; icon: string; x: number; y: number }[] = [
   { id: 'onboarding', title: 'Welcome', icon: '🏠', x: 150, y: 60 },
-  { id: 'shop', title: 'Shop', icon: '🛒', x: 30, y: 120 },
+  { id: 'shop', title: 'Free Mint', icon: '🎴', x: 30, y: 120 },
   { id: 'collection', title: 'Collection', icon: '🃏', x: 280, y: 20 },
-  { id: 'decks', title: 'Deck Builder', icon: '📋', x: 50, y: 10 },
   { id: 'leaderboard', title: 'Leaderboard', icon: '🏆', x: 220, y: 90 },
 ];
 

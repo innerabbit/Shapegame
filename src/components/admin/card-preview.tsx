@@ -87,7 +87,7 @@ interface CardPreviewProps {
 
 export function CardPreview({ card, artUrl, size = 'md', className = '' }: CardPreviewProps) {
   const shapeDef = SHAPES.find((s) => s.shape === card.shape);
-  const mana = MANA_COLORS[card.mana_color];
+  const mana = MANA_COLORS[card.mana_color] || { emoji: '⬜', label: 'Unknown', hex: '#6b7280' };
   const frame = FRAME_STYLES[card.rarity_tier] || FRAME_STYLES.common;
   const ability = ABILITIES.find((a) => a.name === card.ability);
 
@@ -191,7 +191,7 @@ export function CardPreview({ card, artUrl, size = 'md', className = '' }: CardP
           <StatChip label="HP" value={card.hp} color="text-green-400" size={t} />
         </div>
         <div className="flex items-center gap-1">
-          <span className={`${t.number} text-white/40`}>{card.background.replace('_', ' ')}</span>
+          <span className={`${t.number} text-white/40`}>{card.background?.replace('_', ' ') ?? ''}</span>
         </div>
       </div>
     </div>

@@ -81,22 +81,37 @@ export async function POST(request: Request) {
     // 4. Create or get Supabase auth user
     const email = `${walletAddress}@wallet.shapecards`;
 
-    // Try to find existing auth user
-    const { data: { users: existingUsers } } = await admin.auth.admin.listUsers();
-    let authUser = existingUsers?.find(u => u.email === email);
+    // Try to create first (works for new users)
+    const { data: created } = await admin.auth.admin.createUser({
+      email,
+      email_confirm: true,
+      user_metadata: { wallet_address: walletAddress },
+    });
+
+    let authUser = created?.user ?? null;
+
+    // If already exists — look up via app users table + getUserById (no pagination issues)
+    if (!authUser) {
+      const { data: appRow } = await admin
+        .from('users')
+        .select('supabase_auth_id')
+        .eq('wallet_address', walletAddress)
+        .single();
+
+      if (appRow?.supabase_auth_id) {
+        const { data: { user } } = await admin.auth.admin.getUserById(appRow.supabase_auth_id);
+        authUser = user;
+      }
+
+      // Final fallback: listUsers with high perPage
+      if (!authUser) {
+        const { data: { users } } = await admin.auth.admin.listUsers({ perPage: 1000 });
+        authUser = users?.find(u => u.email === email) ?? null;
+      }
+    }
 
     if (!authUser) {
-      // Create new auth user
-      const { data: created, error: createErr } = await admin.auth.admin.createUser({
-        email,
-        email_confirm: true,
-        user_metadata: { wallet_address: walletAddress },
-      });
-
-      if (createErr) {
-        return NextResponse.json({ error: `Auth user creation failed: ${createErr.message}` }, { status: 500 });
-      }
-      authUser = created.user;
+      return NextResponse.json({ error: 'Could not find or create auth user' }, { status: 500 });
     }
 
     // 5. Upsert app user row

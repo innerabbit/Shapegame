@@ -6,13 +6,11 @@ import { XpManagedWindow } from '@/components/xp/xp-managed-window';
 import { OnboardingContent } from '@/components/windows/onboarding-content';
 import { ShopContent } from '@/components/windows/shop-content';
 import { CollectionContent } from '@/components/windows/collection-content';
-import { DecksContent } from '@/components/windows/decks-content';
 import { LeaderboardContent } from '@/components/windows/leaderboard-content';
 
 const HASH_TO_WINDOW: Record<string, WindowId> = {
   shop: 'shop',
   collection: 'collection',
-  decks: 'decks',
   leaderboard: 'leaderboard',
 };
 
@@ -61,10 +59,6 @@ export default function HomePage() {
         statusBar={<><div>Collection</div><div className="flex-1 text-right">SHAPE_CARDS</div></>}
       >
         <CollectionContent />
-      </XpManagedWindow>
-
-      <XpManagedWindow windowId="decks">
-        <DecksContent />
       </XpManagedWindow>
 
       <XpManagedWindow

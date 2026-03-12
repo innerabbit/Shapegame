@@ -26,7 +26,7 @@ export async function GET() {
 // ── PUT /api/prompts ────────────────────────────────
 // Update a single prompt by slug
 export async function PUT(request: NextRequest) {
-  const { slug, content } = await request.json();
+  const { slug, content, label } = await request.json();
 
   if (!slug || typeof content !== 'string') {
     return NextResponse.json(
@@ -36,10 +36,25 @@ export async function PUT(request: NextRequest) {
   }
 
   const supabase = createAdminClient();
+
+  // If no label provided, fetch existing row's label (required NOT NULL column)
+  let resolvedLabel = label;
+  if (!resolvedLabel) {
+    const { data: existing } = await supabase
+      .from('prompts')
+      .select('label')
+      .eq('slug', slug)
+      .single();
+    resolvedLabel = existing?.label || slug;
+  }
+
+  // Upsert — works for both existing and new entries
   const { data, error } = await supabase
     .from('prompts')
-    .update({ content })
-    .eq('slug', slug)
+    .upsert(
+      { slug, content, label: resolvedLabel },
+      { onConflict: 'slug' }
+    )
     .select()
     .single();
 

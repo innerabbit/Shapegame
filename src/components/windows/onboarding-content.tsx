@@ -68,7 +68,7 @@ export function OnboardingContent() {
             onClick={goToShop}
             className="xp-button xp-button-primary px-6 py-[5px] text-[12px] font-bold"
           >
-            🛒 Open Shop
+            🎴 Free Mint
           </button>
           <button
             onClick={goToShop}

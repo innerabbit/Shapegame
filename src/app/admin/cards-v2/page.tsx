@@ -50,6 +50,10 @@ export default function CardsV2Page() {
 
   const [error, setError] = useState<string | null>(null);
 
+  // Prompt preview
+  const [promptPreview, setPromptPreview] = useState<{ fullPrompt: string; injectedContext: Record<string, string>; templateSource: string } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState(false);
+
   // Prompt templates
   const [promptsOpen, setPromptsOpen] = useState(false);
   const [prompts, setPrompts] = useState<Record<string, { id: string; label: string; content: string; updated_at: string }> | null>(null);
@@ -207,6 +211,28 @@ export default function CardsV2Page() {
     }
   };
 
+  // Preview full prompt for a card (no Gemini call)
+  const previewFullPrompt = async (cardId: string) => {
+    setLoadingPreview(true);
+    setPromptPreview(null);
+    try {
+      const res = await fetch('/api/cards/generate-description', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardIds: [cardId], previewOnly: true }),
+      });
+      const data = await res.json();
+      if (data.previews?.[0]) {
+        setPromptPreview(data.previews[0]);
+      } else {
+        toast.error('Failed to preview prompt');
+      }
+    } catch {
+      toast.error('Network error');
+    }
+    setLoadingPreview(false);
+  };
+
   // Fetch prompts from DB
   const fetchPrompts = async () => {
     try {
@@ -218,11 +244,23 @@ export default function CardsV2Page() {
         for (const [slug, p] of Object.entries(data.prompts) as [string, any][]) {
           drafts[slug] = p.content;
         }
+        // Initialize ctx_ defaults for entries not yet in DB
+        for (const [slug, def] of Object.entries(CTX_DEFAULTS)) {
+          if (!drafts[slug]) drafts[slug] = def.content;
+        }
         setPromptDrafts(drafts);
       }
     } catch {
       toast.error('Failed to load prompts');
     }
+  };
+
+  // Context map defaults & labels
+  const CTX_DEFAULTS: Record<string, { label: string; content: string }> = {
+    ctx_class: { label: 'Context: Hero Classes', content: 'preacher: church leaders, gospel, faith community\nhacker: tech underground, computer labs, dial-up era\ngangster: street hustle, corner boys, trap houses\nartist: hip-hop, graffiti, open mics, DJ battles\nathlete: basketball courts, boxing gyms, track meets' },
+    ctx_color: { label: 'Context: Mana Colors', content: 'yellow: faith, order, churches, gospel\nblue: technology, control, computer labs\nblack: street power, hustle, nighttime\nred: art, chaos, creativity, performance\ngreen: sport, nature, physical force\nwhite: artifacts, neutral, equipment' },
+    ctx_material: { label: 'Context: Materials', content: 'flat: cheap looking, cardboard cutout, lo-fi\ngradient: slightly better, textured, print quality\n3d: solid, glossy, catches the flash light\nchrome: shiny metallic, mirror reflections, premium\ngold: luxurious golden gleam, heavy, rare treasure' },
+    ctx_rarity: { label: 'Context: Rarity Scale', content: 'legendary: EPIC, larger-than-life composition\nepic: dramatic, powerful presence\nrare: everyday street scene\nuncommon: everyday street scene\ncommon: everyday street scene' },
   };
 
   // Save a single prompt
@@ -232,12 +270,20 @@ export default function CardsV2Page() {
       const res = await fetch('/api/prompts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, content: promptDrafts[slug] }),
+        body: JSON.stringify({ slug, content: promptDrafts[slug], ...(CTX_DEFAULTS[slug] ? { label: CTX_DEFAULTS[slug].label } : {}) }),
       });
       const data = await res.json();
       if (data.prompt) {
         toast.success(`Prompt "${slug}" saved`);
-        setPrompts(prev => prev ? { ...prev, [slug]: { ...prev[slug], content: promptDrafts[slug], updated_at: data.prompt.updated_at } } : null);
+        setPrompts(prev => ({
+          ...prev,
+          [slug]: {
+            id: data.prompt.id,
+            label: data.prompt.label || slug,
+            content: promptDrafts[slug],
+            updated_at: data.prompt.updated_at,
+          },
+        }));
       } else {
         toast.error(data.error || 'Save failed');
       }
@@ -431,10 +477,65 @@ export default function CardsV2Page() {
         }}
       >
         <summary className="text-sm font-medium cursor-pointer text-neutral-300">📝 Prompt Templates (Supabase)</summary>
+
+        <div className="mt-3 p-3 bg-blue-950/30 border border-blue-900/50 rounded-lg">
+          <h4 className="text-xs font-bold text-blue-400 mb-1">🔗 Pipeline: how prompts are assembled</h4>
+          <div className="text-[11px] text-neutral-400 space-y-1 font-mono">
+            <div><span className="text-blue-300">1. Description gen:</span> base + type_template(with vars) → Gemini → art_description</div>
+            <div><span className="text-blue-300">2. Image gen:</span> image_style + &quot;\n\nNow generate an image:\n\n&quot; + art_description → Gemini Image</div>
+          </div>
+        </div>
+
         {!prompts ? (
           <p className="mt-3 text-xs text-neutral-500">Loading prompts...</p>
         ) : (
           <div className="mt-3 space-y-4">
+            {/* Context Maps — editable key:value pairs */}
+            <div className="border border-amber-800/50 rounded-lg p-3 bg-amber-950/20">
+              <h4 className="text-xs font-bold text-amber-400 mb-2">🎛️ Context Maps (injected into {'{{variables}}'})</h4>
+              <p className="text-[10px] text-neutral-500 mb-3">
+                Format: <code className="text-amber-300">key: value</code> per line. These fill {'{{class_context}}'}, {'{{color_context}}'}, {'{{material_context}}'}, {'{{rarity_scale}}'} in templates.
+              </p>
+              {(['ctx_class', 'ctx_color', 'ctx_material', 'ctx_rarity'] as const).map(slug => {
+                const p = prompts?.[slug];
+                const defaults = CTX_DEFAULTS[slug];
+                const label = p?.label ?? defaults.label;
+                const savedContent = p?.content ?? '';
+                const draft = promptDrafts[slug] ?? (savedContent || defaults.content);
+                const isNew = !p;
+                const changed = isNew || draft !== p.content;
+                return (
+                  <div key={slug} className="space-y-1 mb-3">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-semibold text-amber-400/80">{label}</label>
+                      {p ? (
+                        <span className="text-[10px] text-neutral-600">
+                          updated {new Date(p.updated_at).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-amber-600">not saved yet — defaults shown</span>
+                      )}
+                    </div>
+                    <textarea
+                      value={draft}
+                      onChange={e => setPromptDrafts(prev => ({ ...prev, [slug]: e.target.value }))}
+                      rows={slug === 'ctx_rarity' ? 4 : 6}
+                      className="w-full bg-neutral-800 text-sm rounded-lg p-3 border border-amber-900/50 font-mono text-neutral-200 resize-y"
+                      placeholder={`key: value (one per line)`}
+                    />
+                    <button
+                      onClick={() => savePrompt(slug)}
+                      disabled={!changed || savingPrompt === slug}
+                      className="bg-green-700 hover:bg-green-600 disabled:bg-neutral-700 disabled:text-neutral-500 text-white px-4 py-1 rounded text-xs font-medium"
+                    >
+                      {savingPrompt === slug ? 'Saving...' : isNew ? 'Save to DB' : changed ? 'Save Changes' : 'No Changes'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Prompt Templates */}
             {(['image_style', 'base', 'hero', 'land', 'artifact'] as const).map(slug => {
               const p = prompts[slug];
               if (!p) return null;
@@ -825,6 +926,41 @@ export default function CardsV2Page() {
               ) : (
                 <div className="text-sm text-neutral-400 bg-neutral-800/50 rounded p-2 min-h-[40px] max-h-[120px] overflow-y-auto">
                   {selectedCard.art_description || <span className="italic text-neutral-600">No description yet. Click Generate.</span>}
+                </div>
+              )}
+            </div>
+
+            {/* Preview Full Prompt — shows exactly what goes to Gemini */}
+            <div className="space-y-1">
+              <button
+                onClick={() => previewFullPrompt(selectedCard.id)}
+                disabled={loadingPreview}
+                className="text-xs bg-neutral-700 hover:bg-neutral-600 disabled:bg-neutral-800 text-neutral-300 px-3 py-1 rounded"
+              >
+                {loadingPreview ? 'Loading...' : '🔍 Preview Full Prompt (what Gemini sees)'}
+              </button>
+              {promptPreview && (
+                <div className="bg-neutral-950 border border-neutral-700 rounded-lg p-3 space-y-2 max-h-[400px] overflow-y-auto">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-amber-400">Full Description Prompt</span>
+                    <span className="text-[10px] text-neutral-600">source: {promptPreview.templateSource}</span>
+                  </div>
+                  <pre className="text-[11px] text-neutral-300 whitespace-pre-wrap font-mono leading-relaxed">
+                    {promptPreview.fullPrompt}
+                  </pre>
+                  {Object.keys(promptPreview.injectedContext).length > 0 && (
+                    <div className="border-t border-neutral-800 pt-2">
+                      <span className="text-[10px] font-bold text-red-400">Injected context (hardcoded in code):</span>
+                      <div className="mt-1 space-y-0.5">
+                        {Object.entries(promptPreview.injectedContext).map(([k, v]) => (
+                          <div key={k} className="text-[10px] font-mono">
+                            <span className="text-neutral-500">{`{{${k}}}`}</span> → <span className="text-neutral-300">{v}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <button onClick={() => setPromptPreview(null)} className="text-[10px] text-neutral-600 hover:text-neutral-400">Close</button>
                 </div>
               )}
             </div>

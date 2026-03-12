@@ -55,7 +55,6 @@ export function MintContent() {
   const [txSignatures, setTxSignatures] = useState<string[]>([]);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch mint status
   const fetchStatus = useCallback(async () => {
     try {
       const res = await fetch('/api/nft/status');
@@ -64,13 +63,12 @@ export function MintContent() {
       setCountdown(data.secondsRemaining);
       setHoldingCountdown(data.holdingSecondsRemaining || 0);
     } catch {
-      // Silently fail — will show as not authenticated
+      // Silently fail
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Poll status when wallet is connected
   useEffect(() => {
     if (connected && isAuthenticated) {
       fetchStatus();
@@ -80,7 +78,7 @@ export function MintContent() {
     }
   }, [connected, isAuthenticated, fetchStatus]);
 
-  // Countdown timer (cooldown + holding)
+  // Countdown timer
   useEffect(() => {
     const activeCountdown = countdown > 0 || holdingCountdown > 0;
     if (!activeCountdown) {
@@ -114,7 +112,6 @@ export function MintContent() {
     return `${m}:${String(s).padStart(2, '0')}`;
   };
 
-  // Main mint flow
   const handleMint = async () => {
     if (!connected || !signTransaction || !publicKey) {
       setVisible(true);
@@ -127,7 +124,6 @@ export function MintContent() {
     setTxSignatures([]);
 
     try {
-      // 1. Request mint from server
       const mintRes = await fetch('/api/nft/mint-booster', { method: 'POST' });
       const mintData = await mintRes.json();
 
@@ -142,33 +138,23 @@ export function MintContent() {
       const { transactions, cards, packId, nextMintAt } = mintData;
       setMintedCards(cards);
 
-      // 2. Sign & send transactions
       const sigs: string[] = [];
       for (let i = 0; i < transactions.length; i++) {
         setStage(i === 0 ? 'signing_1' : 'signing_2');
-
-        // Deserialize the partially-signed tx
         const txBuffer = Buffer.from(transactions[i], 'base64');
         const tx = Transaction.from(txBuffer);
-
-        // User signs
         const signedTx = await signTransaction(tx);
-
         setStage(i === 0 ? 'confirming_1' : 'confirming_2');
-
-        // Send and confirm
         const rawTx = signedTx.serialize();
         const sig = await connection.sendRawTransaction(rawTx, {
           skipPreflight: false,
           preflightCommitment: 'confirmed',
         });
-
         await connection.confirmTransaction(sig, 'confirmed');
         sigs.push(sig);
         setTxSignatures([...sigs]);
       }
 
-      // 3. Confirm with server
       setStage('saving');
       await fetch('/api/nft/confirm', {
         method: 'POST',
@@ -176,7 +162,6 @@ export function MintContent() {
         body: JSON.stringify({ packId, txSignatures: sigs }),
       });
 
-      // 4. Update status
       if (nextMintAt) {
         const remaining = Math.ceil((new Date(nextMintAt).getTime() - Date.now()) / 1000);
         setCountdown(remaining);
@@ -193,8 +178,6 @@ export function MintContent() {
       setShowBooster(true);
     } catch (err: any) {
       console.error('[mint] Error:', err);
-
-      // Check if partial mint happened
       if (txSignatures.length > 0) {
         setStage('partial');
         setError(`Partial mint: ${txSignatures.length}/2 transactions succeeded. Your ${txSignatures.length * 3} cards are minted.`);
@@ -202,8 +185,6 @@ export function MintContent() {
         setStage('error');
         setError(err.message || 'Mint failed. Please try again.');
       }
-
-      // Refresh status to get accurate cooldown
       fetchStatus();
     }
   };
@@ -224,14 +205,17 @@ export function MintContent() {
     partial: 'Partially minted',
   };
 
+  const holdingMinutes = status?.holdingPeriodMinutes ?? 2;
+  const cooldownMinutes = status?.cooldownMinutes ?? 2;
+
   return (
     <>
       <div className="space-y-4">
         {/* Header */}
         <fieldset className="xp-groupbox">
-          <legend className="xp-groupbox-legend">NFT Booster Pack</legend>
+          <legend className="xp-groupbox-legend">Free NFT Mint</legend>
           <p className="text-[11px] text-[#444] mb-2">
-            Mint 6 random NFT cards on Solana. Hold enough SOL to mint for free every {status?.cooldownMinutes ?? 30} minutes.
+            Mint 6 random NFT cards on Solana for free. Hold SOL for {holdingMinutes} min, then mint every {cooldownMinutes} min.
           </p>
           <div className="flex gap-3 text-[11px]">
             <div className="border border-[#c3c0b6] bg-white px-2 py-1">
@@ -255,7 +239,7 @@ export function MintContent() {
 
           {!connected ? (
             <div className="text-center py-4">
-              <p className="text-[11px] text-[#666] mb-3">Connect your Solana wallet to mint NFT boosters</p>
+              <p className="text-[11px] text-[#666] mb-3">Connect your Solana wallet to mint free NFT cards</p>
               <button
                 onClick={() => setVisible(true)}
                 className="xp-button xp-button-primary px-4 py-[4px] text-[12px]"
@@ -280,54 +264,50 @@ export function MintContent() {
                   {status.currentBalance.toFixed(4)} SOL
                 </span>
               </div>
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-[#666]">Required Balance:</span>
-                <span className="font-bold">{status.requiredBalance} SOL</span>
-              </div>
 
-              {/* Holding period */}
+              {/* Holding period countdown */}
               {holdingCountdown > 0 && (
-                <div className="border border-[#c3c0b6] bg-[#f0f4ff] p-2">
+                <div className="border border-[#003c74] bg-[#f0f4ff] p-2">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#003c74]">Holding period:</span>
-                    <span className="font-bold text-[#003c74] font-mono text-[14px]">
+                    <span className="text-[#003c74] font-bold">Hold SOL to unlock minting:</span>
+                    <span className="font-bold text-[#003c74] font-mono text-[16px]">
                       {formatTime(holdingCountdown)}
                     </span>
                   </div>
-                  <div className="xp-progress mt-1 h-[8px]">
+                  <div className="xp-progress mt-1 h-[10px]">
                     <div
                       className="h-full bg-[#003c74] transition-all duration-1000"
                       style={{
-                        width: `${Math.max(0, 100 - (holdingCountdown / ((status?.holdingPeriodMinutes ?? 30) * 60)) * 100)}%`,
+                        width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
                       }}
                     />
                   </div>
                   <p className="text-[10px] text-[#666] mt-1">
-                    Hold {status?.requiredBalance ?? 0.01} SOL for {status?.holdingPeriodMinutes ?? 30} min to unlock minting
+                    Keep at least {status.requiredBalance} SOL in your wallet
                   </p>
                 </div>
               )}
-              {status?.holdingComplete && !holdingCountdown && (
+              {status.holdingComplete && !holdingCountdown && (
                 <div className="flex items-center justify-between text-[11px]">
                   <span className="text-[#666]">Holding period:</span>
                   <span className="font-bold text-[#22a846]">Complete</span>
                 </div>
               )}
 
-              {/* Cooldown */}
+              {/* Cooldown countdown */}
               {countdown > 0 && (
-                <div className="border border-[#c3c0b6] bg-[#fff8e8] p-2">
+                <div className="border border-[#eab308] bg-[#fff8e8] p-2">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#996600]">Cooldown:</span>
-                    <span className="font-bold text-[#996600] font-mono text-[14px]">
+                    <span className="text-[#996600] font-bold">Next mint available in:</span>
+                    <span className="font-bold text-[#996600] font-mono text-[16px]">
                       {formatTime(countdown)}
                     </span>
                   </div>
-                  <div className="xp-progress mt-1 h-[8px]">
+                  <div className="xp-progress mt-1 h-[10px]">
                     <div
                       className="h-full bg-[#eab308] transition-all duration-1000"
                       style={{
-                        width: `${Math.max(0, 100 - (countdown / ((status?.cooldownMinutes ?? 30) * 60)) * 100)}%`,
+                        width: `${Math.max(0, 100 - (countdown / (cooldownMinutes * 60)) * 100)}%`,
                       }}
                     />
                   </div>
@@ -391,7 +371,7 @@ export function MintContent() {
               {/* Success */}
               {stage === 'done' && (
                 <div className="border border-[#22a846] bg-[#f0fff0] p-2 text-[11px] text-[#006600]">
-                  <p className="font-bold">6 NFT cards minted!</p>
+                  <p className="font-bold">6 NFT cards minted for free!</p>
                   {txSignatures.map((sig, i) => (
                     <a
                       key={sig}
@@ -410,21 +390,21 @@ export function MintContent() {
               <button
                 onClick={handleMint}
                 disabled={isProcessing || (status ? !status.canMint : true)}
-                className={`xp-button w-full py-[6px] text-[12px] font-bold ${
+                className={`xp-button w-full py-[8px] text-[13px] font-bold ${
                   status?.canMint && !isProcessing ? 'xp-button-primary' : ''
                 }`}
               >
                 {isProcessing
                   ? stageLabels[stage]
                   : status?.canMint
-                  ? 'Mint NFT Booster (6 Cards)'
+                  ? 'Free Mint (6 NFT Cards)'
                   : holdingCountdown > 0
-                  ? `Hold SOL: ${formatTime(holdingCountdown)}`
+                  ? `Holding: ${formatTime(holdingCountdown)}`
                   : countdown > 0
                   ? `Cooldown: ${formatTime(countdown)}`
                   : !status?.hasEnoughBalance
                   ? `Need ${status?.requiredBalance ?? 0.01} SOL`
-                  : 'Mint NFT Booster (6 Cards)'
+                  : 'Free Mint (6 NFT Cards)'
                 }
               </button>
 

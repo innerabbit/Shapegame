@@ -131,7 +131,7 @@ function buildPromptFromTemplates(
 // ── Hardcoded fallback (used if prompts table doesn't exist yet) ──
 
 function buildDescriptionPromptFallback(card: any, maps: ContextMaps): string {
-  const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, warm colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
+  const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, muted colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
 
 Generate a vivid, cinematic visual description (2-3 sentences) for this card's artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit '96 aesthetic is mandatory.
 

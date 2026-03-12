@@ -18,16 +18,23 @@ export function getUmi(): Umi {
   const secretKey = process.env.MINT_AUTHORITY_SECRET_KEY;
 
   if (!secretKey) {
+    console.error('[getUmi] MINT_AUTHORITY_SECRET_KEY is missing! Available env keys:', Object.keys(process.env).filter(k => k.includes('MINT') || k.includes('MERKLE') || k.includes('COLLECTION')).join(', '));
     throw new Error('MINT_AUTHORITY_SECRET_KEY env var is required');
   }
 
-  const umi = createUmi(rpcUrl, 'confirmed').use(mplTokenMetadata()).use(mplBubblegum());
+  try {
+    const umi = createUmi(rpcUrl, 'confirmed').use(mplTokenMetadata()).use(mplBubblegum());
 
-  const secretKeyBytes = bs58.decode(secretKey);
-  const keypair = umi.eddsa.createKeypairFromSecretKey(secretKeyBytes);
-  const signer = createSignerFromKeypair(umi, keypair);
-  umi.use(signerIdentity(signer));
+    const secretKeyBytes = bs58.decode(secretKey);
+    const keypair = umi.eddsa.createKeypairFromSecretKey(secretKeyBytes);
+    const signer = createSignerFromKeypair(umi, keypair);
+    umi.use(signerIdentity(signer));
 
-  _umi = umi;
-  return umi;
+    console.log('[getUmi] Initialized. Authority:', signer.publicKey.toString());
+    _umi = umi;
+    return umi;
+  } catch (err: any) {
+    console.error('[getUmi] Failed to initialize:', err?.message);
+    throw err;
+  }
 }

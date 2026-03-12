@@ -35,7 +35,7 @@ export default function CardsV2Page() {
 
   // Bulk action state
   const [bulkAction, setBulkAction] = useState<'description' | 'art'>('description');
-  const [bulkTarget, setBulkTarget] = useState<'missing' | 'all' | 'filtered'>('missing');
+  const [bulkTarget, setBulkTarget] = useState<'missing' | 'all' | 'filtered' | 'desc-no-art'>('missing');
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
 
@@ -46,6 +46,7 @@ export default function CardsV2Page() {
   const [nameDraft, setNameDraft] = useState('');
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingArt, setGeneratingArt] = useState(false);
+  const [uploadingArt, setUploadingArt] = useState(false);
   const [artVersion, setArtVersion] = useState(0); // cache-bust for art images
 
   const [error, setError] = useState<string | null>(null);
@@ -310,6 +311,8 @@ export default function CardsV2Page() {
     let targetCards = filteredCards;
     if (bulkTarget === 'missing') {
       targetCards = targetCards.filter(c => !c.art_description);
+    } else if (bulkTarget === 'desc-no-art') {
+      targetCards = targetCards.filter(c => c.art_description && !c.raw_art_path);
     }
     if (targetCards.length === 0) {
       toast.info('No cards to process');
@@ -456,9 +459,10 @@ export default function CardsV2Page() {
             <option value="missing">Missing only</option>
             <option value="all">All (regenerate)</option>
             <option value="filtered">Current filter ({filteredCards.length})</option>
+            <option value="desc-no-art">Has description, no art ({filteredCards.filter(c => c.art_description && !c.raw_art_path).length})</option>
           </select>
           <span className="text-xs text-neutral-400">
-            Will process: {bulkTarget === 'missing' ? filteredCards.filter(c => !c.art_description).length : filteredCards.length} cards
+            Will process: {bulkTarget === 'missing' ? filteredCards.filter(c => !c.art_description).length : bulkTarget === 'desc-no-art' ? filteredCards.filter(c => c.art_description && !c.raw_art_path).length : filteredCards.length} cards
           </span>
           <button
             onClick={runBulkAction}
@@ -984,46 +988,92 @@ export default function CardsV2Page() {
               )}
             </div>
 
-            {/* Generate Art Button */}
-            {selectedCard.art_description && (
-              <button
-                className="w-full bg-purple-600 hover:bg-purple-500 disabled:bg-neutral-700 text-white py-2 rounded text-sm font-medium"
-                disabled={generatingArt}
-                onClick={async () => {
-                  setGeneratingArt(true);
-                  try {
-                    const res = await fetch('/api/generate/art', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({
-                        cardId: selectedCard.id,
-                        prompt: selectedCard.art_description,
-                      }),
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                      toast.success('Art generated!');
-                      const updatedCard = data.card as CardV2;
-                      setCards(prev => prev.map(c =>
-                        c.id === selectedCard.id ? { ...c, ...updatedCard } : c
-                      ));
-                      setArtVersion(v => v + 1);
-                      setSelectedCard(prev => prev
-                        ? { ...prev, raw_art_path: data.filePath, art_prompt: data.card?.art_prompt }
-                        : null
-                      );
-                    } else {
-                      toast.error(data.error || 'Art generation failed');
+            {/* Generate Art + Upload Photo */}
+            <div className="flex gap-2">
+              {selectedCard.art_description && (
+                <button
+                  className="flex-1 bg-purple-600 hover:bg-purple-500 disabled:bg-neutral-700 text-white py-2 rounded text-sm font-medium"
+                  disabled={generatingArt || uploadingArt}
+                  onClick={async () => {
+                    setGeneratingArt(true);
+                    try {
+                      const res = await fetch('/api/generate/art', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          cardId: selectedCard.id,
+                          prompt: selectedCard.art_description,
+                        }),
+                      });
+                      const data = await res.json();
+                      if (data.success) {
+                        toast.success('Art generated!');
+                        const updatedCard = data.card as CardV2;
+                        setCards(prev => prev.map(c =>
+                          c.id === selectedCard.id ? { ...c, ...updatedCard } : c
+                        ));
+                        setArtVersion(v => v + 1);
+                        setSelectedCard(prev => prev
+                          ? { ...prev, raw_art_path: data.filePath, art_prompt: data.card?.art_prompt }
+                          : null
+                        );
+                      } else {
+                        toast.error(data.error || 'Art generation failed');
+                      }
+                    } catch (err) {
+                      toast.error('Network error generating art');
                     }
-                  } catch (err) {
-                    toast.error('Network error generating art');
-                  }
-                  setGeneratingArt(false);
-                }}
+                    setGeneratingArt(false);
+                  }}
+                >
+                  {generatingArt ? 'Generating...' : selectedCard.raw_art_path ? '🎨 Regen Art' : '🎨 Generate Art'}
+                </button>
+              )}
+              {/* Upload custom photo */}
+              <label
+                className={`flex-1 text-center py-2 rounded text-sm font-medium cursor-pointer transition-colors ${
+                  uploadingArt
+                    ? 'bg-neutral-700 text-neutral-400 cursor-wait'
+                    : 'bg-teal-600 hover:bg-teal-500 text-white'
+                }`}
               >
-                {generatingArt ? 'Generating Art...' : selectedCard.raw_art_path ? '🎨 Regenerate Art' : '🎨 Generate Art'}
-              </button>
-            )}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  disabled={uploadingArt || generatingArt}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !selectedCard) return;
+                    e.target.value = ''; // reset input
+                    setUploadingArt(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append('file', file);
+                      fd.append('cardId', selectedCard.id);
+                      fd.append('cardNumber', String(selectedCard.card_number));
+                      fd.append('cardName', selectedCard.name || 'card');
+                      const res = await fetch('/api/upload/raw-art', { method: 'POST', body: fd });
+                      const data = await res.json();
+                      if (data.success) {
+                        toast.success('Photo uploaded!');
+                        setCards(prev => prev.map(c =>
+                          c.id === selectedCard.id ? { ...c, ...data.card } : c
+                        ));
+                        setArtVersion(v => v + 1);
+                        setSelectedCard(prev => prev ? { ...prev, raw_art_path: data.filePath } : null);
+                      } else {
+                        toast.error(data.error || 'Upload failed');
+                      }
+                    } catch {
+                      toast.error('Network error uploading photo');
+                    }
+                    setUploadingArt(false);
+                  }}
+                />
+                {uploadingArt ? 'Uploading...' : '📷 Upload Photo'}
+              </label>
+            </div>
           </div>
         )}
       </div>

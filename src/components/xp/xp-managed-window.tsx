@@ -68,7 +68,7 @@ export function XpManagedWindow({
         if (!focused) focusWindow(windowId);
       }}
     >
-      <div className="xp-window h-full flex flex-col">
+      <div className="xp-window flex flex-col">
         {/* Title bar — draggable */}
         <div
           className={`xp-title-bar shrink-0 ${!focused ? 'xp-title-bar-inactive' : ''}`}

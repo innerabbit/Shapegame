@@ -57,10 +57,11 @@ export async function checkBalanceHistory(
     if (!tx?.meta) continue;
 
     // Find wallet's index in accountKeys
-    const keys = tx.transaction.message.getAccountKeys();
+    // Use staticAccountKeys to avoid ALT resolution errors on V0 transactions
+    const staticKeys = tx.transaction.message.staticAccountKeys;
     let walletIndex = -1;
-    for (let i = 0; i < keys.length; i++) {
-      if (keys.get(i)?.toBase58() === walletAddress) {
+    for (let i = 0; i < staticKeys.length; i++) {
+      if (staticKeys[i]?.toBase58() === walletAddress) {
         walletIndex = i;
         break;
       }

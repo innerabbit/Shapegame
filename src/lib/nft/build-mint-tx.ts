@@ -18,7 +18,7 @@ export interface MintResult {
 /**
  * Mint compressed NFTs (cNFTs) via Bubblegum V2.
  * Server fully signs and sends — no client signing needed.
- * Mints all cards in a single transaction.
+ * Mints each card in a separate transaction to avoid ALT resolution issues.
  */
 export async function mintCompressedCards(
   umi: Umi,
@@ -36,11 +36,14 @@ export async function mintCompressedCards(
   const merkleTreePk = publicKey(MERKLE_TREE_ADDRESS);
   const leafOwner = publicKey(walletAddress);
 
-  // Build a single transaction with all card mints
-  let builder = transactionBuilder();
+  const assetIds: string[] = [];
+  const signatures: string[] = [];
 
+  // Mint each card in a separate transaction to avoid
+  // "address table lookups were not resolved" error
   for (const card of cards) {
-    builder = builder.add(
+    // Use legacy transaction version to avoid ALT resolution issues
+    const builder = transactionBuilder().add(
       mintV2(umi, {
         merkleTree: merkleTreePk,
         leafOwner,
@@ -60,37 +63,27 @@ export async function mintCompressedCards(
         },
       }),
     );
-  }
 
-  // Server fully signs and sends
-  const result = await builder.sendAndConfirm(umi);
-  const signature = bs58.encode(result.signature);
+    const result = await builder.sendAndConfirm(umi);
+    const signature = bs58.encode(result.signature);
+    signatures.push(signature);
 
-  // Derive asset IDs from the Merkle tree leaf indices
-  // We need to fetch the tree config to know the current leaf count
-  const assetIds: string[] = [];
-
-  try {
-    const leaf = await parseLeafFromMintV2Transaction(umi, result.signature);
-    // parseLeafFromMintV2Transaction returns the first leaf in the tx
-    const firstNonce = Number(leaf.nonce);
-    for (let i = 0; i < cards.length; i++) {
+    // Derive asset ID from the Merkle tree leaf index
+    try {
+      const leaf = await parseLeafFromMintV2Transaction(umi, result.signature);
       const [assetId] = findLeafAssetIdPda(umi, {
         merkleTree: merkleTreePk,
-        leafIndex: firstNonce + i,
+        leafIndex: Number(leaf.nonce),
       });
       assetIds.push(assetId.toString());
-    }
-  } catch (err) {
-    console.warn('[mint] Could not parse leaf from tx, using signature as reference:', err);
-    // Fallback: use signature + index as identifier
-    for (let i = 0; i < cards.length; i++) {
-      assetIds.push(`${signature}:${i}`);
+    } catch (err) {
+      console.warn('[mint] Could not parse leaf from tx, using signature as reference:', err);
+      assetIds.push(`${signature}:0`);
     }
   }
 
   return {
     assetIds,
-    signatures: [signature],
+    signatures,
   };
 }

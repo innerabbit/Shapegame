@@ -117,7 +117,15 @@ export function MintContent() {
 
     try {
       const mintRes = await fetch('/api/nft/mint-booster', { method: 'POST' });
-      const mintData = await mintRes.json();
+
+      // Safely parse JSON — handle empty/HTML responses
+      let mintData: any;
+      try {
+        const text = await mintRes.text();
+        mintData = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(`Server error (${mintRes.status}). Try again.`);
+      }
 
       if (!mintRes.ok) {
         if (mintRes.status === 429) {

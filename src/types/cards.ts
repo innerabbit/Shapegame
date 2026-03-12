@@ -162,3 +162,16 @@ export interface CardRow {
   ability: string | null;
   final_rarity_pct: number;
 }
+
+// ── Leaderboard ──────────────────────────────────────
+export interface LeaderboardEntry {
+  rank: number;
+  wallet_address: string;
+  twitter_handle: string | null;
+  total_cards: number;
+  unique_cards: number;
+  legendaries: number;
+  epics: number;
+  rares: number;
+  score: number;
+}

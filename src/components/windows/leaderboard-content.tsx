@@ -1,21 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { XpGroupBox } from '@/components/xp';
+import type { LeaderboardEntry } from '@/types/cards';
 
-const MOCK_LEADERS = [
-  { rank: 1, address: '7xKX...mR4p', twitter: '@shape_whale', cards: 142, legendaries: 8, epics: 19, completion: 72.8, score: 14200 },
-  { rank: 2, address: 'Gh3P...vN2s', twitter: '@card_hunter', cards: 128, legendaries: 6, epics: 22, completion: 65.6, score: 12800 },
-  { rank: 3, address: 'Bx9T...kL7w', twitter: '@solana_shaper', cards: 115, legendaries: 5, epics: 18, completion: 59.0, score: 11500 },
-  { rank: 4, address: 'Wy2Q...aP8r', twitter: null, cards: 98, legendaries: 4, epics: 15, completion: 50.3, score: 9800 },
-  { rank: 5, address: 'Nz5F...dK3m', twitter: '@nft_grinder', cards: 87, legendaries: 3, epics: 14, completion: 44.6, score: 8700 },
-  { rank: 6, address: 'Vm8J...bR6t', twitter: null, cards: 76, legendaries: 3, epics: 11, completion: 39.0, score: 7600 },
-  { rank: 7, address: 'Ts4H...xW1n', twitter: '@crypto_cards', cards: 65, legendaries: 2, epics: 9, completion: 33.3, score: 6500 },
-  { rank: 8, address: 'Kp6L...eY9c', twitter: null, cards: 54, legendaries: 2, epics: 7, completion: 27.7, score: 5400 },
-  { rank: 9, address: 'Rw1D...gZ5j', twitter: '@shape_lord', cards: 43, legendaries: 1, epics: 6, completion: 22.1, score: 4300 },
-  { rank: 10, address: 'Ux3M...fQ4h', twitter: null, cards: 31, legendaries: 1, epics: 4, completion: 15.9, score: 3100 },
-];
+interface LeaderboardData {
+  leaders: LeaderboardEntry[];
+  user_rank: { rank: number; total_cards: number; unique_cards: number; score: number } | null;
+  total_players: number;
+}
 
 function getRankIcon(rank: number) {
   if (rank === 1) return '🥇';
@@ -24,100 +18,198 @@ function getRankIcon(rank: number) {
   return `#${rank}`;
 }
 
+function shortAddr(addr: string) {
+  return `${addr.slice(0, 4)}...${addr.slice(-4)}`;
+}
+
 export function LeaderboardContent() {
   const { publicKey } = useWallet();
+  const [data, setData] = useState<LeaderboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const userAddress = useMemo(() => {
-    if (!publicKey) return null;
-    const base58 = publicKey.toBase58();
-    return `${base58.slice(0, 4)}...${base58.slice(-4)}`;
-  }, [publicKey]);
+  const walletAddr = useMemo(() => publicKey?.toBase58() ?? null, [publicKey]);
+
+  const fetchLeaderboard = useCallback(async () => {
+    try {
+      const url = walletAddr
+        ? `/api/leaderboard?wallet=${walletAddr}`
+        : '/api/leaderboard';
+      const res = await fetch(url);
+      if (!res.ok) throw new Error('Failed to load');
+      const json: LeaderboardData = await res.json();
+      setData(json);
+      setError(null);
+    } catch {
+      setError('Failed to load leaderboard');
+    } finally {
+      setLoading(false);
+    }
+  }, [walletAddr]);
+
+  // Initial fetch + auto-refresh every 60s
+  useEffect(() => {
+    fetchLeaderboard();
+    const interval = setInterval(fetchLeaderboard, 60_000);
+    return () => clearInterval(interval);
+  }, [fetchLeaderboard]);
+
+  const leaders = data?.leaders ?? [];
+  const top3 = leaders.slice(0, 3);
+
+  // ── Loading skeleton ──
+  if (loading) {
+    return (
+      <div className="space-y-3 animate-pulse">
+        <div className="h-[40px] bg-[#e0e0e0] rounded-sm" />
+        <div className="flex items-end justify-center gap-3">
+          {[0, 1, 2].map(i => (
+            <div key={i} className="border border-[#ccc] bg-[#f0f0f0] p-3 w-28 h-24 rounded-sm" />
+          ))}
+        </div>
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-[28px] bg-[#e8e8e8] rounded-sm" />
+        ))}
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-[12px] text-[#cc0000] mb-2">{error}</p>
+        <button onClick={fetchLeaderboard} className="xp-button px-4 py-1 text-[11px]">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  // ── Empty state ──
+  if (leaders.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <div className="text-3xl mb-2">🏆</div>
+        <p className="text-[12px] text-[#666]">No mints yet. Be the first!</p>
+      </div>
+    );
+  }
 
   return (
     <div>
       {/* Scoring info */}
       <XpGroupBox label="Scoring">
-        <div className="flex items-center gap-4 flex-wrap text-[11px]">
-          <span><span className="font-bold" style={{ color: '#808080' }}>Common</span> = 10 pts</span>
-          <span><span className="font-bold" style={{ color: '#3b82f6' }}>Rare</span> = 50 pts</span>
-          <span><span className="font-bold" style={{ color: '#8b5cf6' }}>Epic</span> = 200 pts</span>
-          <span><span className="font-bold" style={{ color: '#eab308' }}>Legendary</span> = 1000 pts</span>
+        <div className="flex items-center gap-3 flex-wrap text-[11px]">
+          <span><span className="font-bold text-[#808080]">Common</span> = 10</span>
+          <span><span className="font-bold text-[#22c55e]">Uncommon</span> = 25</span>
+          <span><span className="font-bold text-[#3b82f6]">Rare</span> = 50</span>
+          <span><span className="font-bold text-[#8b5cf6]">Epic</span> = 200</span>
+          <span><span className="font-bold text-[#eab308]">Legendary</span> = 1000</span>
         </div>
       </XpGroupBox>
 
-      {publicKey && (
+      {/* Your rank */}
+      {walletAddr && (
         <div className="xp-infobar mt-3">
           <span className="text-lg">👤</span>
           <div>
             <span className="font-bold">Your Rank:</span>{' '}
-            <span className="font-mono text-[10px]">{userAddress}</span>{' '}
-            <span className="text-[#888]">— Not ranked yet. Buy packs to start collecting!</span>
+            <span className="font-mono text-[10px]">{shortAddr(walletAddr)}</span>{' '}
+            {data?.user_rank ? (
+              <span className="text-[#003399] font-bold">
+                — #{data.user_rank.rank} · {data.user_rank.score.toLocaleString()} pts · {data.user_rank.total_cards} cards
+              </span>
+            ) : (
+              <span className="text-[#888]">— Not ranked yet. Mint packs to start!</span>
+            )}
           </div>
         </div>
       )}
 
       {/* Top 3 podium */}
-      <div className="mt-3 flex items-end justify-center gap-3">
-        <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
-          <div className="text-2xl mb-1">🥈</div>
-          <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[1].address}</div>
-          <div className="text-[13px] font-bold text-[#003399] mt-1">{MOCK_LEADERS[1].score.toLocaleString()}</div>
-          <div className="text-[10px] text-[#888]">{MOCK_LEADERS[1].cards} cards</div>
+      {top3.length >= 3 && (
+        <div className="mt-3 flex items-end justify-center gap-3">
+          {/* 2nd place */}
+          <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
+            <div className="text-2xl mb-1">🥈</div>
+            <div className="font-mono text-[10px] text-[#666]">{shortAddr(top3[1].wallet_address)}</div>
+            {top3[1].twitter_handle && (
+              <div className="text-[10px] text-[#0066cc]">@{top3[1].twitter_handle}</div>
+            )}
+            <div className="text-[13px] font-bold text-[#003399] mt-1">{top3[1].score.toLocaleString()}</div>
+            <div className="text-[10px] text-[#888]">{top3[1].total_cards} cards</div>
+          </div>
+          {/* 1st place */}
+          <div className="border-2 border-[#eab308] bg-[#fffbe6] p-3 text-center w-32 -mb-1">
+            <div className="text-3xl mb-1">🥇</div>
+            <div className="font-mono text-[10px] text-[#666]">{shortAddr(top3[0].wallet_address)}</div>
+            {top3[0].twitter_handle && (
+              <div className="text-[10px] text-[#0066cc]">@{top3[0].twitter_handle}</div>
+            )}
+            <div className="text-[14px] font-bold text-[#b8860b] mt-1">{top3[0].score.toLocaleString()}</div>
+            <div className="text-[10px] text-[#888]">{top3[0].total_cards} cards</div>
+          </div>
+          {/* 3rd place */}
+          <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
+            <div className="text-2xl mb-1">🥉</div>
+            <div className="font-mono text-[10px] text-[#666]">{shortAddr(top3[2].wallet_address)}</div>
+            {top3[2].twitter_handle && (
+              <div className="text-[10px] text-[#0066cc]">@{top3[2].twitter_handle}</div>
+            )}
+            <div className="text-[13px] font-bold text-[#003399] mt-1">{top3[2].score.toLocaleString()}</div>
+            <div className="text-[10px] text-[#888]">{top3[2].total_cards} cards</div>
+          </div>
         </div>
-        <div className="border-2 border-[#eab308] bg-[#fffbe6] p-3 text-center w-32 -mb-1">
-          <div className="text-3xl mb-1">🥇</div>
-          <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[0].address}</div>
-          {MOCK_LEADERS[0].twitter && <div className="text-[10px] text-[#0066cc]">{MOCK_LEADERS[0].twitter}</div>}
-          <div className="text-[14px] font-bold text-[#b8860b] mt-1">{MOCK_LEADERS[0].score.toLocaleString()}</div>
-          <div className="text-[10px] text-[#888]">{MOCK_LEADERS[0].cards} cards</div>
-        </div>
-        <div className="border border-[#919b9c] bg-[#f5f3ee] p-3 text-center w-28">
-          <div className="text-2xl mb-1">🥉</div>
-          <div className="font-mono text-[10px] text-[#666]">{MOCK_LEADERS[2].address}</div>
-          <div className="text-[13px] font-bold text-[#003399] mt-1">{MOCK_LEADERS[2].score.toLocaleString()}</div>
-          <div className="text-[10px] text-[#888]">{MOCK_LEADERS[2].cards} cards</div>
-        </div>
-      </div>
+      )}
 
       {/* Full table */}
       <div className="xp-listview mt-4">
         <div className="xp-listview-header grid grid-cols-12 gap-1">
           <span className="col-span-1">Rank</span>
-          <span className="col-span-3">Collector</span>
+          <span className="col-span-4">Collector</span>
           <span className="col-span-2 text-center">Cards</span>
-          <span className="col-span-2 text-center">Legendaries</span>
-          <span className="col-span-2 text-center">Completion</span>
-          <span className="col-span-2 text-right">Score</span>
+          <span className="col-span-2 text-center">Rare+</span>
+          <span className="col-span-3 text-right">Score</span>
         </div>
-        {MOCK_LEADERS.map((leader) => (
-          <div key={leader.rank} className={`xp-listview-row grid grid-cols-12 gap-1 items-center ${leader.rank <= 3 ? 'font-bold' : ''}`}>
+        {leaders.map((leader) => (
+          <div
+            key={leader.wallet_address}
+            className={`xp-listview-row grid grid-cols-12 gap-1 items-center ${
+              leader.rank <= 3 ? 'font-bold' : ''
+            } ${walletAddr === leader.wallet_address ? 'bg-[#e8f0fe]' : ''}`}
+          >
             <span className="col-span-1">{getRankIcon(leader.rank)}</span>
-            <div className="col-span-3">
-              <span className="font-mono text-[10px]">{leader.address}</span>
-              {leader.twitter && <span className="text-[10px] text-[#0066cc] ml-1">{leader.twitter}</span>}
+            <div className="col-span-4 truncate">
+              <span className="font-mono text-[10px]">{shortAddr(leader.wallet_address)}</span>
+              {leader.twitter_handle && (
+                <span className="text-[10px] text-[#0066cc] ml-1">@{leader.twitter_handle}</span>
+              )}
             </div>
-            <span className="col-span-2 text-center">{leader.cards}</span>
+            <span className="col-span-2 text-center">{leader.total_cards}</span>
             <span className="col-span-2 text-center">
-              <span style={{ color: '#eab308' }}>{leader.legendaries}</span>
-              <span className="text-[#ccc] mx-0.5">/</span>
-              <span style={{ color: '#8b5cf6' }}>{leader.epics}</span>
+              {leader.legendaries > 0 && (
+                <span style={{ color: '#eab308' }}>{leader.legendaries}L </span>
+              )}
+              {leader.epics > 0 && (
+                <span style={{ color: '#8b5cf6' }}>{leader.epics}E </span>
+              )}
+              {leader.rares > 0 && (
+                <span style={{ color: '#3b82f6' }}>{leader.rares}R</span>
+              )}
+              {leader.legendaries === 0 && leader.epics === 0 && leader.rares === 0 && (
+                <span className="text-[#ccc]">—</span>
+              )}
             </span>
-            <div className="col-span-2 text-center flex items-center gap-1 justify-center">
-              <div className="xp-progress h-[8px] w-14">
-                <div className="xp-progress-bar h-full" style={{ width: `${leader.completion}%` }} />
-              </div>
-              <span className="text-[10px]">{leader.completion}%</span>
-            </div>
-            <span className="col-span-2 text-right font-bold text-[#003399]">{leader.score.toLocaleString()}</span>
+            <span className="col-span-3 text-right font-bold text-[#003399]">
+              {leader.score.toLocaleString()}
+            </span>
           </div>
         ))}
       </div>
 
-      <div className="xp-infobar mt-4">
-        <span className="text-lg">🏗️</span>
-        <div>
-          <span className="font-bold">Preview Data</span> — Live leaderboard coming soon.
-        </div>
+      {/* Footer */}
+      <div className="mt-3 text-center text-[10px] text-[#999]">
+        {data?.total_players ?? 0} collectors · Updates every 30s
       </div>
     </div>
   );

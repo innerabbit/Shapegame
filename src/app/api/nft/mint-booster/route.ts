@@ -215,6 +215,11 @@ export async function POST() {
       console.error('[nft/mint] DB save error (non-fatal):', err?.message);
     }
 
+    // Refresh leaderboard materialized view (fire-and-forget)
+    admin.rpc('refresh_leaderboard').then(({ error: refreshErr }) => {
+      if (refreshErr) console.error('[nft/mint] Leaderboard refresh error (non-fatal):', refreshErr.message);
+    });
+
     // Calculate next mint time
     const nextMintAt = new Date(Date.now() + MINT_COOLDOWN_MINUTES * 60 * 1000);
 

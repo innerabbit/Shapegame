@@ -209,15 +209,16 @@ export function MintContent() {
     partial: 'Partially minted',
   };
 
-  // ── Derive current step (5 steps) ──
+  // ── Derive current step (4 steps) ──
+  // Holding timer is shown inside the Mint step (step 3), not as a separate step
+  const holdingActive = holdingCountdown > 0 || !status?.holdingComplete;
   const currentStep: number =
     !connected || !isAuthenticated ? 1
     : loading ? 1
     : !status?.hasEnoughBalance ? 2
-    : holdingCountdown > 0 || !status?.holdingComplete ? 3
-    : stage === 'done' && !packOpened ? 5
-    : stage === 'done' && packOpened ? 4
-    : 4;
+    : stage === 'done' && !packOpened ? 4
+    : stage === 'done' && packOpened ? 3
+    : 3;
 
   const walletAddr = publicKey?.toBase58();
   const shortAddr = walletAddr ? `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}` : '';
@@ -306,38 +307,11 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* ── Step 3: Verification timer ── */}
+        {/* ── Step 3: Mint (includes holding timer on button) ── */}
         {renderStep(
           3,
-          'Verification',
-          currentStep > 3 ? 'done' : currentStep === 3 ? 'active' : 'pending',
-          'Verified',
-          <div className="space-y-3">
-            <p className="text-[11px] text-[#444]">
-              Verifying your balance for {holdingMinutes} min...
-            </p>
-            <button
-              disabled
-              className="xp-button w-full py-[10px] text-[16px] font-bold font-mono text-[#003c74]"
-            >
-              ⏳ {formatTime(holdingCountdown)}
-            </button>
-            <div className="xp-progress h-[12px]">
-              <div
-                className="h-full bg-[#003c74] transition-all duration-1000"
-                style={{
-                  width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
-                }}
-              />
-            </div>
-          </div>,
-        )}
-
-        {/* ── Step 4: Mint ── */}
-        {renderStep(
-          4,
           'Mint Your Pack',
-          stage === 'done' ? 'done' : currentStep === 4 ? 'active' : 'pending',
+          stage === 'done' ? 'done' : currentStep === 3 ? 'active' : 'pending',
           '6 cards minted!',
           <div className="space-y-3">
             {/* Progress indicator during mint */}
@@ -373,8 +347,31 @@ export function MintContent() {
               </div>
             )}
 
+            {/* Holding timer — shows countdown on the button */}
+            {holdingActive && !isProcessing && (
+              <div className="space-y-2">
+                <p className="text-[11px] text-[#444]">
+                  Verifying balance for {holdingMinutes} min...
+                </p>
+                <button
+                  disabled
+                  className="xp-button w-full py-[10px] text-[16px] font-bold font-mono text-[#003c74]"
+                >
+                  ⏳ {formatTime(holdingCountdown)}
+                </button>
+                <div className="xp-progress h-[10px]">
+                  <div
+                    className="h-full bg-[#003c74] transition-all duration-1000"
+                    style={{
+                      width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
             {/* Cooldown */}
-            {countdown > 0 && !isProcessing && (
+            {!holdingActive && countdown > 0 && !isProcessing && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] text-[#996600] font-bold">Next mint in</span>
@@ -393,8 +390,8 @@ export function MintContent() {
               </div>
             )}
 
-            {/* Mint button */}
-            {!isProcessing && (
+            {/* Mint button — visible when not holding and not processing */}
+            {!holdingActive && !isProcessing && (
               <button
                 onClick={handleMint}
                 disabled={status ? !status.canMint : true}
@@ -417,9 +414,9 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* ── Step 5: Open Pack ── */}
+        {/* ── Step 4: Open Pack ── */}
         {renderStep(
-          5,
+          4,
           'Open Pack',
           packOpened ? 'done' : stage === 'done' ? 'active' : 'pending',
           'Pack opened!',

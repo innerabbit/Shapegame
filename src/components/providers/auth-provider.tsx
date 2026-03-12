@@ -88,6 +88,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
+    // Wait for initial session check to complete before auto sign-in
+    if (isLoading) return;
+
     // Already signed in with this wallet, or already attempted
     if (user?.wallet_address === walletAddress) return;
     if (authAttemptedRef.current === walletAddress) return;
@@ -106,7 +109,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsSigningIn(false);
     });
-  }, [wallet.connected, wallet.publicKey, wallet.signMessage, user, isSigningIn, wallet]);
+  }, [wallet.connected, wallet.publicKey, wallet.signMessage, user, isSigningIn, isLoading, wallet]);
 
   const signOut = useCallback(async () => {
     await supabaseRef.current.auth.signOut();

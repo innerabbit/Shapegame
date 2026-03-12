@@ -4,6 +4,9 @@
 /** Metaplex Core Collection mint address */
 export const COLLECTION_ADDRESS = process.env.NEXT_PUBLIC_COLLECTION_ADDRESS || '';
 
+/** Bubblegum V2 Merkle tree address for compressed NFTs */
+export const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS || '';
+
 /** Minimum SOL balance required to mint (lamports) */
 export const MIN_BALANCE_LAMPORTS = Number(process.env.MIN_MINT_BALANCE_LAMPORTS || 10_000_000); // 0.01 SOL
 
@@ -17,7 +20,4 @@ export const HOLDING_PERIOD_MINUTES = Number(process.env.HOLDING_PERIOD_MINUTES 
 export const METADATA_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://theshapegame.app';
 
 /** Cards per booster pack */
-export const CARDS_PER_PACK = 6;
-
-/** Cards per transaction (limited by Solana tx size) */
-export const CARDS_PER_TX = 3;
+export const CARDS_PER_PACK = 3;

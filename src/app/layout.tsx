@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'The Shape Game — Hold. Collect. Battle.',
   description:
-    'NFT card game on Solana. Hold $SHAPEGAME, get free booster packs with 6 NFT cards each, build your deck and battle.',
+    'NFT card game on Solana. Hold SOL, get free booster packs with 3 NFT cards each, build your deck and battle.',
   openGraph: {
     title: 'The Shape Game',
     description: 'NFT card game on Solana — hold $SHAPEGAME, collect and battle',

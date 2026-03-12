@@ -78,7 +78,7 @@ export function XpManagedWindow({
           onPointerUp={onPointerUp}
         >
           <div className="flex items-center gap-[6px] min-w-0">
-            <span className="text-sm shrink-0">{win.icon}</span>
+            <img src={win.icon} alt="" width={14} height={14} className="shrink-0" />
             <span className="xp-title-text">{win.title}</span>
           </div>
           <div className="flex items-center gap-[2px] shrink-0">

@@ -132,9 +132,10 @@
    Windows XP Luna Theme
    ═══════════════════════════════════════════════ */
 
-/* XP Desktop background — Bliss-inspired gradient */
+/* XP Desktop background — Shape Game wallpaper */
 .xp-desktop {
-  background: linear-gradient(180deg, #245edb 0%, #3a78e8 20%, #59a354 50%, #5aad50 60%, #6abe5a 80%, #7ac96a 100%);
+  background: url('/wallpaper.jpg') center center / cover no-repeat fixed,
+    linear-gradient(135deg, #b8b0d8 0%, #a8c0d8 30%, #98c8cc 60%, #b0d0c8 100%);
   min-height: 100vh;
   font-family: 'Tahoma', 'Segoe UI', 'Arial', sans-serif;
   font-size: 11px;

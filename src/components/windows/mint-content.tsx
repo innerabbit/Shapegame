@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
-import { useConnection } from '@solana/wallet-adapter-react';
-import { VersionedTransaction } from '@solana/web3.js';
 import { useAuth } from '@/hooks/use-auth';
 import { BoosterOverlay } from '@/components/booster/booster-overlay';
 
@@ -25,23 +23,11 @@ interface MintStatus {
   reason?: string;
 }
 
-type MintStage =
-  | 'idle'
-  | 'checking'
-  | 'building'
-  | 'signing_1'
-  | 'signing_2'
-  | 'confirming_1'
-  | 'confirming_2'
-  | 'saving'
-  | 'done'
-  | 'error'
-  | 'partial';
+type MintStage = 'idle' | 'minting' | 'done' | 'error';
 
 export function MintContent() {
-  const { connected, publicKey, signTransaction } = useWallet();
+  const { connected, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
-  const { connection } = useConnection();
   const { isAuthenticated } = useAuth();
 
   const [status, setStatus] = useState<MintStatus | null>(null);
@@ -118,12 +104,12 @@ export function MintContent() {
   };
 
   const handleMint = async () => {
-    if (!connected || !signTransaction || !publicKey) {
+    if (!connected || !publicKey) {
       setVisible(true);
       return;
     }
 
-    setStage('building');
+    setStage('minting');
     setError(null);
     setMintedCards(null);
     setTxSignatures([]);
@@ -141,34 +127,9 @@ export function MintContent() {
         throw new Error(mintData.error || 'Mint failed');
       }
 
-      const { transactions, cards, packId, nextMintAt } = mintData;
+      const { signatures, cards, nextMintAt } = mintData;
       setMintedCards(cards);
-
-      const sigs: string[] = [];
-      for (let i = 0; i < transactions.length; i++) {
-        setStage(i === 0 ? 'signing_1' : 'signing_2');
-        const txBuffer = Buffer.from(transactions[i], 'base64');
-        const tx = VersionedTransaction.deserialize(txBuffer);
-        const signedTx = await signTransaction(tx);
-        setStage(i === 0 ? 'confirming_1' : 'confirming_2');
-        const rawTxBase64 = Buffer.from(signedTx.serialize()).toString('base64');
-        const sendRes = await fetch('/api/nft/send-tx', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ signedTx: rawTxBase64 }),
-        });
-        const sendData = await sendRes.json();
-        if (!sendRes.ok) throw new Error(sendData.error || 'Failed to send transaction');
-        sigs.push(sendData.signature);
-        setTxSignatures([...sigs]);
-      }
-
-      setStage('saving');
-      await fetch('/api/nft/confirm', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ packId, txSignatures: sigs }),
-      });
+      setTxSignatures(signatures);
 
       if (nextMintAt) {
         const remaining = Math.ceil((new Date(nextMintAt).getTime() - Date.now()) / 1000);
@@ -186,37 +147,17 @@ export function MintContent() {
       setShowBooster(true);
     } catch (err: any) {
       console.error('[mint] Error:', err);
-      if (txSignatures.length > 0) {
-        setStage('partial');
-        setError(`Partial mint: ${txSignatures.length}/2 transactions succeeded. Your ${txSignatures.length * 3} cards are minted.`);
-      } else {
-        setStage('error');
-        setError(err.message || 'Mint failed. Please try again.');
-      }
+      setStage('error');
+      setError(err.message || 'Mint failed. Please try again.');
       fetchStatus();
     }
   };
 
-  const isProcessing = !['idle', 'done', 'error', 'partial'].includes(stage);
+  const isProcessing = stage === 'minting';
   const holdingMinutes = status?.holdingPeriodMinutes ?? 2;
   const cooldownMinutes = status?.cooldownMinutes ?? 2;
 
-  const stageLabels: Record<MintStage, string> = {
-    idle: '',
-    checking: 'Checking eligibility...',
-    building: 'Building transactions...',
-    signing_1: 'Sign transaction 1/2 in wallet...',
-    signing_2: 'Sign transaction 2/2 in wallet...',
-    confirming_1: 'Confirming transaction 1/2...',
-    confirming_2: 'Confirming transaction 2/2...',
-    saving: 'Saving mint records...',
-    done: 'Minted successfully!',
-    error: 'Mint failed',
-    partial: 'Partially minted',
-  };
-
   // ── Derive current step (4 steps) ──
-  // Holding timer is shown inside the Mint step (step 3), not as a separate step
   const holdingActive = holdingCountdown > 0 || !status?.holdingComplete;
   const currentStep: number =
     !connected || !isAuthenticated ? 1
@@ -289,7 +230,7 @@ export function MintContent() {
               onClick={() => setVisible(true)}
               className="xp-button xp-button-primary px-6 py-[6px] text-[12px] font-bold"
             >
-              👛 Connect Wallet
+              Connect Wallet
             </button>
           </div>,
         )}
@@ -318,25 +259,16 @@ export function MintContent() {
           3,
           'Mint Your Pack',
           stage === 'done' ? 'done' : currentStep === 3 ? 'active' : 'pending',
-          '6 cards minted!',
+          '3 cards minted!',
           <div className="space-y-3">
             {/* Progress indicator during mint */}
             {isProcessing && (
               <div className="space-y-2">
-                <p className="text-[11px] text-[#003c74] font-bold">{stageLabels[stage]}</p>
+                <p className="text-[11px] text-[#003c74] font-bold">Minting 3 cards...</p>
                 <div className="xp-progress h-[10px]">
                   <div
-                    className="h-full bg-[#003c74] transition-all duration-300"
-                    style={{
-                      width: `${
-                        stage === 'building' ? 15 :
-                        stage === 'signing_1' ? 30 :
-                        stage === 'confirming_1' ? 45 :
-                        stage === 'signing_2' ? 60 :
-                        stage === 'confirming_2' ? 75 :
-                        stage === 'saving' ? 90 : 0
-                      }%`,
-                    }}
+                    className="h-full bg-[#003c74] transition-all duration-300 animate-pulse"
+                    style={{ width: '60%' }}
                   />
                 </div>
               </div>
@@ -344,11 +276,7 @@ export function MintContent() {
 
             {/* Error */}
             {error && (
-              <div className={`border p-2 text-[11px] rounded-sm ${
-                stage === 'partial'
-                  ? 'border-[#eab308] bg-[#fff8e8] text-[#996600]'
-                  : 'border-[#cc0000] bg-[#fff0f0] text-[#cc0000]'
-              }`}>
+              <div className="border p-2 text-[11px] rounded-sm border-[#cc0000] bg-[#fff0f0] text-[#cc0000]">
                 {error}
               </div>
             )}
@@ -363,7 +291,7 @@ export function MintContent() {
                   disabled
                   className="xp-button w-full py-[10px] text-[16px] font-bold font-mono text-[#003c74]"
                 >
-                  ⏳ {formatTime(holdingCountdown)}
+                  {formatTime(holdingCountdown)}
                 </button>
                 <div className="xp-progress h-[10px]">
                   <div
@@ -407,7 +335,7 @@ export function MintContent() {
               >
                 {countdown > 0
                   ? `Cooldown: ${formatTime(countdown)}`
-                  : '🎴 Free Mint — 6 NFT Cards'
+                  : '🎴 Free Mint — 3 NFT Cards'
                 }
               </button>
             )}
@@ -437,7 +365,7 @@ export function MintContent() {
                     rel="noopener noreferrer"
                     className="block text-[#003399] underline"
                   >
-                    TX {i + 1}: {sig.slice(0, 8)}...{sig.slice(-8)}
+                    TX: {sig.slice(0, 8)}...{sig.slice(-8)}
                   </a>
                 ))}
               </div>
@@ -446,7 +374,7 @@ export function MintContent() {
               onClick={() => setShowBooster(true)}
               className="xp-button xp-button-primary px-6 py-[6px] text-[13px] font-bold w-full"
             >
-              📦 Open Pack
+              Open Pack
             </button>
           </div>,
         )}
@@ -457,7 +385,7 @@ export function MintContent() {
             onClick={mintAgain}
             className="xp-button w-full py-[4px] text-[11px]"
           >
-            🔄 Mint Another Pack
+            Mint Another Pack
           </button>
         )}
       </div>

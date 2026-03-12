@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { WalletProvider } from '@/components/providers/wallet-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
 import { WalletButton } from '@/components/wallet-button';
@@ -8,10 +9,10 @@ import { Toaster } from 'sonner';
 import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
 
 const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
-  { id: 'onboarding', icon: '🏠', label: 'Welcome' },
-  { id: 'shop', icon: '🎴', label: 'Free Mint' },
-  { id: 'collection', icon: '🃏', label: 'Collection' },
-  { id: 'leaderboard', icon: '🏆', label: 'Leaderboard' },
+  { id: 'onboarding', icon: '/icons/xp-home.svg', label: 'Welcome' },
+  { id: 'shop', icon: '/icons/xp-cards.svg', label: 'Free Mint' },
+  { id: 'collection', icon: '/icons/xp-collection.svg', label: 'Collection' },
+  { id: 'leaderboard', icon: '/icons/xp-trophy.svg', label: 'Leaderboard' },
 ];
 
 function TaskbarInner() {
@@ -31,7 +32,7 @@ function TaskbarInner() {
           className="xp-start-button"
           onClick={() => setStartOpen(!startOpen)}
         >
-          <span className="text-base">🪟</span>
+          <Image src="/icons/xp-start.svg" alt="" width={16} height={16} className="shrink-0" />
           start
         </button>
 
@@ -41,7 +42,7 @@ function TaskbarInner() {
             <div className="fixed inset-0 z-[98]" onClick={() => setStartOpen(false)} />
             <div className="xp-start-menu">
               <div className="xp-start-menu-header">
-                <span className="text-base">🎴</span>
+                <Image src="/icons/xp-cards.svg" alt="" width={16} height={16} />
                 <span className="font-bold">THE SHAPE GAME</span>
               </div>
               <div className="xp-start-menu-items">
@@ -54,7 +55,7 @@ function TaskbarInner() {
                       setStartOpen(false);
                     }}
                   >
-                    <span className="text-base">{w.icon}</span>
+                    <Image src={w.icon} alt="" width={16} height={16} className="shrink-0" />
                     <span>{w.label}</span>
                   </button>
                 ))}
@@ -74,7 +75,7 @@ function TaskbarInner() {
               className={`xp-taskbar-btn ${isFocused ? 'xp-taskbar-btn-active' : ''} ${w.isMinimized ? 'xp-taskbar-btn-minimized' : ''}`}
               onClick={() => toggleWindow(w.id)}
             >
-              <span className="text-xs">{w.icon}</span>
+              <img src={w.icon} alt="" width={14} height={14} className="shrink-0" />
               <span className="truncate">{w.title}</span>
             </button>
           );
@@ -83,7 +84,8 @@ function TaskbarInner() {
 
       {/* System tray */}
       <div className="xp-tray">
-        <span className="text-[10px]">🔊</span>
+        <WalletButton />
+        <img src="/icons/xp-speaker.svg" alt="" width={14} height={14} />
         <span className="text-[11px]">
           {new Date().toLocaleTimeString('en-US', {
             hour: 'numeric',
@@ -105,15 +107,6 @@ export default function PublicLayout({
     <WalletProvider>
       <AuthProvider>
       <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
-        {/* Title bar — fixed at top */}
-        <div className="xp-top-bar">
-          <div className="flex items-center gap-[6px]">
-            <span className="text-sm">🎴</span>
-            <span className="xp-title-text">THE SHAPE GAME</span>
-          </div>
-          <WalletButton />
-        </div>
-
         {/* Main content — desktop area */}
         <main className="flex-1 relative">
           {children}

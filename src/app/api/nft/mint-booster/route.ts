@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getUmi } from '@/lib/nft/umi';
 import { pickBoosterPack } from '@/lib/nft/pick-booster';
-import { buildMintTransactions } from '@/lib/nft/build-mint-tx';
+import { mintCompressedCards } from '@/lib/nft/build-mint-tx';
 import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
 import { checkBalanceHistory } from '@/lib/nft/check-balance-history';
 import { randomUUID } from 'crypto';
@@ -16,9 +16,9 @@ export const maxDuration = 30; // Vercel function timeout
  * 1. Verify auth + wallet
  * 2. Check SOL balance
  * 3. Atomic cooldown claim (prevents race condition)
- * 4. Pick 6 random cards (secure RNG, weighted rarity)
- * 5. Build 2 partially-signed transactions (3 mints each)
- * 6. Return serialized transactions for client to sign + send
+ * 4. Pick 3 random cards (secure RNG, weighted rarity)
+ * 5. Mint 3 compressed NFTs directly to user's wallet (server pays)
+ * 6. Return asset IDs + signatures
  */
 export async function POST() {
   const admin = createAdminClient();
@@ -129,35 +129,35 @@ export async function POST() {
     }, { status: 429 });
   }
 
-  // 4. Pick 6 cards
+  // 5. Pick 3 cards
   const { data: allCards, error: cardsError } = await admin
     .from('cards')
     .select('*')
     .order('card_number');
 
-  if (cardsError || !allCards || allCards.length < 6) {
+  if (cardsError || !allCards || allCards.length < 3) {
     return NextResponse.json({ error: 'No cards available' }, { status: 500 });
   }
 
   const pack = pickBoosterPack(allCards);
 
-  // 5. Build mint transactions
+  // 6. Mint compressed NFTs directly (server signs and sends)
   const umi = getUmi();
   let result;
   try {
-    result = await buildMintTransactions(umi, walletAddress, pack);
+    result = await mintCompressedCards(umi, walletAddress, pack);
   } catch (err: any) {
-    console.error('[nft/mint] Build tx error:', err);
-    return NextResponse.json({ error: 'Failed to build mint transaction' }, { status: 500 });
+    console.error('[nft/mint] Mint error:', err);
+    return NextResponse.json({ error: 'Failed to mint compressed NFTs' }, { status: 500 });
   }
 
-  // 6. Save pack info to DB (before user signs — we'll confirm after)
+  // 7. Save pack info to DB
   const packId = randomUUID();
   const mintRows = pack.map((card, i) => ({
     user_id: userId,
     card_id: card.id,
-    mint_address: result.mintAddresses[i],
-    tx_signature: '', // Will be updated after confirmation
+    mint_address: result.assetIds[i],
+    tx_signature: result.signatures[0],
     pack_id: packId,
   }));
 
@@ -179,8 +179,8 @@ export async function POST() {
   const nextMintAt = new Date(Date.now() + MINT_COOLDOWN_MINUTES * 60 * 1000);
 
   return NextResponse.json({
-    transactions: result.transactions,
-    mintAddresses: result.mintAddresses,
+    assetIds: result.assetIds,
+    signatures: result.signatures,
     cards: pack,
     packId,
     nextMintAt: nextMintAt.toISOString(),

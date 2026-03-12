@@ -14,10 +14,10 @@ export interface WindowState {
 }
 
 const WINDOW_DEFS: { id: WindowId; title: string; icon: string; x: number; y: number }[] = [
-  { id: 'onboarding', title: 'Welcome', icon: '🏠', x: 150, y: 60 },
-  { id: 'shop', title: 'Free Mint', icon: '🎴', x: 30, y: 120 },
-  { id: 'collection', title: 'Collection', icon: '🃏', x: 280, y: 20 },
-  { id: 'leaderboard', title: 'Leaderboard', icon: '🏆', x: 220, y: 90 },
+  { id: 'onboarding', title: 'Welcome', icon: '/icons/xp-home.svg', x: 150, y: 60 },
+  { id: 'shop', title: 'Free Mint', icon: '/icons/xp-cards.svg', x: 30, y: 120 },
+  { id: 'collection', title: 'Collection', icon: '/icons/xp-collection.svg', x: 280, y: 20 },
+  { id: 'leaderboard', title: 'Leaderboard', icon: '/icons/xp-trophy.svg', x: 220, y: 90 },
 ];
 
 interface WindowManagerStore {

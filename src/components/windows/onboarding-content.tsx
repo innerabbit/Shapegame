@@ -107,8 +107,8 @@ export function OnboardingContent() {
           <legend className="xp-groupbox-legend">How It Works</legend>
           <div className="space-y-3">
             {[
-              { step: '1.', icon: '💎', title: 'Hold $SHAPEGAME', desc: 'Get access to free booster packs' },
-              { step: '2.', icon: '📦', title: 'Open Boosters', desc: '6 NFT cards in each pack, free' },
+              { step: '1.', icon: '💎', title: 'Hold SOL', desc: 'Get access to free booster packs' },
+              { step: '2.', icon: '📦', title: 'Open Boosters', desc: '3 NFT cards in each pack, free' },
               { step: '3.', icon: '⚔️', title: 'Battle', desc: 'Build your deck and fight' },
             ].map(({ step, icon, title, desc }) => (
               <div key={step} className="flex items-start gap-2 text-[11px]">

@@ -47,7 +47,6 @@ export function WalletButton() {
         </>
       ) : (
         <>
-          <span>👛</span>
           <span>Connect Wallet</span>
         </>
       )}

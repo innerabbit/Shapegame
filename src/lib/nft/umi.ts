@@ -1,5 +1,6 @@
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplCore } from '@metaplex-foundation/mpl-core';
+import { mplBubblegum } from '@metaplex-foundation/mpl-bubblegum';
 import { createSignerFromKeypair, signerIdentity, type Umi } from '@metaplex-foundation/umi';
 import bs58 from 'bs58';
 
@@ -20,7 +21,7 @@ export function getUmi(): Umi {
     throw new Error('MINT_AUTHORITY_SECRET_KEY env var is required');
   }
 
-  const umi = createUmi(rpcUrl, 'confirmed').use(mplCore());
+  const umi = createUmi(rpcUrl, 'confirmed').use(mplCore()).use(mplBubblegum());
 
   const secretKeyBytes = bs58.decode(secretKey);
   const keypair = umi.eddsa.createKeypairFromSecretKey(secretKeyBytes);

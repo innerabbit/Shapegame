@@ -151,13 +151,15 @@ export function MintContent() {
         const tx = VersionedTransaction.deserialize(txBuffer);
         const signedTx = await signTransaction(tx);
         setStage(i === 0 ? 'confirming_1' : 'confirming_2');
-        const rawTx = signedTx.serialize();
-        const sig = await connection.sendRawTransaction(rawTx, {
-          skipPreflight: false,
-          preflightCommitment: 'confirmed',
+        const rawTxBase64 = Buffer.from(signedTx.serialize()).toString('base64');
+        const sendRes = await fetch('/api/nft/send-tx', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ signedTx: rawTxBase64 }),
         });
-        await connection.confirmTransaction(sig, 'confirmed');
-        sigs.push(sig);
+        const sendData = await sendRes.json();
+        if (!sendRes.ok) throw new Error(sendData.error || 'Failed to send transaction');
+        sigs.push(sendData.signature);
         setTxSignatures([...sigs]);
       }
 

@@ -59,12 +59,12 @@ export function OnboardingContent() {
           >
             <div className="text-5xl mb-3">🎴</div>
             <div className="text-lg font-bold" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>
-              SHAPE
+              THE SHAPE
             </div>
             <div className="text-2xl font-black tracking-wider" style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.3)' }}>
-              CARDS
+              GAME
             </div>
-            <div className="text-[10px] mt-2 opacity-80">NFT Collection on Solana</div>
+            <div className="text-[10px] mt-2 opacity-80">NFT Card Game on Solana</div>
           </div>
         )}
       </div>
@@ -72,21 +72,20 @@ export function OnboardingContent() {
       {/* Right panel */}
       <div className="flex-1 space-y-5">
         <div>
-          <h2 className="text-sm font-bold text-[#003399] mb-1">Welcome to SHAPE_CARDS</h2>
+          <h2 className="text-sm font-bold text-[#003399] mb-1">Welcome to The Shape Game</h2>
           <p className="text-[11px] text-[#444] leading-relaxed">
-            Collect 195 unique shape cards on the Solana blockchain. Open booster packs
-            with a 3D animation, trade with other collectors, and enter battles.
+            NFT card game on Solana. Hold, collect, battle.
           </p>
         </div>
 
         {/* How it works */}
         <fieldset className="xp-groupbox">
           <legend className="xp-groupbox-legend">How It Works</legend>
-          <div className="space-y-2">
+          <div className="space-y-3">
             {[
-              { step: '1.', icon: '👛', title: 'Connect Wallet', desc: 'Link your Solana wallet (Phantom, Solflare)' },
-              { step: '2.', icon: '📦', title: 'Buy Booster Packs', desc: '6 random cards per pack, 1 guaranteed Rare+' },
-              { step: '3.', icon: '⚔️', title: 'Collect & Battle', desc: 'Build your set and enter card battles' },
+              { step: '1.', icon: '💎', title: 'Hold $SHAPEGAME', desc: 'Get access to free booster packs' },
+              { step: '2.', icon: '📦', title: 'Open Boosters', desc: '6 NFT cards in each pack, free' },
+              { step: '3.', icon: '⚔️', title: 'Battle', desc: 'Build your deck and fight' },
             ].map(({ step, icon, title, desc }) => (
               <div key={step} className="flex items-start gap-2 text-[11px]">
                 <span className="text-[#003399] font-bold w-4 shrink-0">{step}</span>

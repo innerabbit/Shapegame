@@ -13,13 +13,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'SHAPE_CARDS — Collect. Trade. Battle.',
+  title: 'The Shape Game — Hold. Collect. Battle.',
   description:
-    'NFT card collection on Solana. 195 unique shape cards with VHS aesthetic. Buy boosters, open packs, collect rare cards.',
+    'NFT card game on Solana. Hold $SHAPEGAME, get free booster packs with 6 NFT cards each, build your deck and battle.',
   openGraph: {
-    title: 'SHAPE_CARDS',
-    description: 'NFT card collection on Solana — 195 unique shape cards',
-    siteName: 'SHAPE_CARDS',
+    title: 'The Shape Game',
+    description: 'NFT card game on Solana — hold $SHAPEGAME, collect and battle',
+    siteName: 'The Shape Game',
   },
 };
 

@@ -42,7 +42,7 @@ function TaskbarInner() {
             <div className="xp-start-menu">
               <div className="xp-start-menu-header">
                 <span className="text-base">🎴</span>
-                <span className="font-bold">SHAPE_CARDS</span>
+                <span className="font-bold">THE SHAPE GAME</span>
               </div>
               <div className="xp-start-menu-items">
                 {ALL_WINDOWS.map((w) => (
@@ -109,7 +109,7 @@ export default function PublicLayout({
         <div className="xp-top-bar">
           <div className="flex items-center gap-[6px]">
             <span className="text-sm">🎴</span>
-            <span className="xp-title-text">SHAPE_CARDS</span>
+            <span className="xp-title-text">THE SHAPE GAME</span>
           </div>
           <WalletButton />
         </div>

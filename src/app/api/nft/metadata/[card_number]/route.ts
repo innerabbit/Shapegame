@@ -56,7 +56,7 @@ export async function GET(
   const metadata = {
     name: `${card.name || `Card #${String(num).padStart(3, '0')}`}`,
     symbol: 'SHAPE',
-    description: card.art_description || card.flavor_text || `A ${card.rarity_tier || ''} ${card.card_type || ''} card from Shape Cards`.trim(),
+    description: card.art_description || card.flavor_text || `A ${card.rarity_tier || ''} ${card.card_type || ''} card from The Shape Game`.trim(),
     image: imageUrl,
     animation_url: animationUrl,
     external_url: 'https://theshapegame.app',

@@ -48,17 +48,17 @@ export function OnboardingContent() {
   return (
     <div className="flex flex-col md:flex-row gap-6">
       {/* Left panel — 3D card + random button */}
-      <div className="md:w-48 shrink-0 flex flex-col items-center">
+      <div className="shrink-0 flex flex-col items-center" style={{ width: 240 }}>
         <div
           className="w-full rounded-sm overflow-hidden flex items-center justify-center"
-          style={{ minHeight: 280 }}
+          style={{ minHeight: 340 }}
         >
           {cardContent ? (
             <SplineCard
               key={randomCard?.id}
               ref={cardRef}
               cardContent={cardContent}
-              style={{ width: '100%', height: 280 }}
+              style={{ width: '100%', height: 340 }}
               onLoad={() => {
                 setTimeout(() => cardRef.current?.triggerFlip(), 600);
               }}

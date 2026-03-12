@@ -5,6 +5,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { getUmi } from '@/lib/nft/umi';
 import { pickBoosterPack } from '@/lib/nft/pick-booster';
 import { mintCompressedCards } from '@/lib/nft/build-mint-tx';
+import { verifyCreatorsAfterMint } from '@/lib/nft/verify-after-mint';
 import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
 import { checkBalanceHistory } from '@/lib/nft/check-balance-history';
 import { randomUUID } from 'crypto';
@@ -176,7 +177,17 @@ export async function POST() {
 
     console.log('[nft/mint] Minted! Signatures:', result.signatures);
 
-    // 7. Save pack info to DB (non-fatal — minting already succeeded)
+    // 7. Fire-and-forget: verify creator on each cNFT (non-blocking)
+    const verifyTasks = result.assetIds.map((assetId, i) => ({
+      assetId,
+      leafOwner: walletAddress!,
+      metadata: result.metadatas[i],
+    }));
+    verifyCreatorsAfterMint(umi, verifyTasks).catch(err => {
+      console.error('[nft/mint] verifyCreator background error (non-fatal):', err?.message);
+    });
+
+    // 8. Save pack info to DB (non-fatal — minting already succeeded)
     const packId = randomUUID();
     try {
       const mintRows = pack.map((card, i) => ({

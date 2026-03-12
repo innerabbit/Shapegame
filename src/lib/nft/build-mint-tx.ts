@@ -7,6 +7,7 @@ import {
   mintToCollectionV1,
   findLeafAssetIdPda,
   parseLeafFromMintToCollectionV1Transaction,
+  type MetadataArgsArgs,
 } from '@metaplex-foundation/mpl-bubblegum';
 import { COLLECTION_ADDRESS, MERKLE_TREE_ADDRESS, METADATA_BASE_URL } from './config';
 import type { BoosterCard } from './pick-booster';
@@ -17,6 +18,8 @@ export interface MintResult {
   assetIds: string[];
   /** Transaction signatures */
   signatures: string[];
+  /** Metadata used for each mint (needed for verifyCreator) */
+  metadatas: MetadataArgsArgs[];
 }
 
 /**
@@ -61,27 +64,30 @@ async function mintBatch(
   leafOwner: ReturnType<typeof publicKey>,
 ): Promise<MintResult> {
   let builder = transactionBuilder();
+  const metadatas: MetadataArgsArgs[] = [];
 
   for (const card of cards) {
+    const metadata: MetadataArgsArgs = {
+      name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
+      symbol: 'SHAPE',
+      uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
+      sellerFeeBasisPoints: 500,
+      collection: { key: collectionMint, verified: false },
+      creators: [
+        {
+          address: umi.identity.publicKey,
+          verified: true,
+          share: 100,
+        },
+      ],
+    };
+    metadatas.push(metadata);
     builder = builder.add(
       mintToCollectionV1(umi, {
         merkleTree: merkleTreePk,
         leafOwner,
         collectionMint,
-        metadata: {
-          name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
-          symbol: 'SHAPE',
-          uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
-          sellerFeeBasisPoints: 500,
-          collection: { key: collectionMint, verified: false },
-          creators: [
-            {
-              address: umi.identity.publicKey,
-              verified: true,
-              share: 100,
-            },
-          ],
-        },
+        metadata,
       }),
     );
   }
@@ -108,7 +114,7 @@ async function mintBatch(
     }
   }
 
-  return { assetIds, signatures: [signature] };
+  return { assetIds, signatures: [signature], metadatas };
 }
 
 /** Mint each card in a separate transaction (fallback) */
@@ -121,27 +127,31 @@ async function mintIndividual(
 ): Promise<MintResult> {
   const assetIds: string[] = [];
   const signatures: string[] = [];
+  const metadatas: MetadataArgsArgs[] = [];
 
   for (const card of cards) {
+    const metadata: MetadataArgsArgs = {
+      name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
+      symbol: 'SHAPE',
+      uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
+      sellerFeeBasisPoints: 500,
+      collection: { key: collectionMint, verified: false },
+      creators: [
+        {
+          address: umi.identity.publicKey,
+          verified: true,
+          share: 100,
+        },
+      ],
+    };
+    metadatas.push(metadata);
+
     const builder = transactionBuilder().add(
       mintToCollectionV1(umi, {
         merkleTree: merkleTreePk,
         leafOwner,
         collectionMint,
-        metadata: {
-          name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
-          symbol: 'SHAPE',
-          uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
-          sellerFeeBasisPoints: 500,
-          collection: { key: collectionMint, verified: false },
-          creators: [
-            {
-              address: umi.identity.publicKey,
-              verified: true,
-              share: 100,
-            },
-          ],
-        },
+        metadata,
       }),
     );
 
@@ -161,5 +171,5 @@ async function mintIndividual(
     }
   }
 
-  return { assetIds, signatures };
+  return { assetIds, signatures, metadatas };
 }

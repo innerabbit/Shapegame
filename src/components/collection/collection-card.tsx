@@ -2,6 +2,8 @@
 
 import { useRef, useState, useCallback } from 'react';
 import { RARITY_LABELS } from '@/lib/constants';
+import { ManaCostDisplay } from '@/components/ui/mana-orb';
+import type { CardColor } from '@/types/cards';
 import type { OwnedCardDetails } from '@/hooks/use-user-cards';
 
 interface CollectionCardProps {
@@ -153,13 +155,16 @@ export function CollectionCard({ card, onClick }: CollectionCardProps) {
           />
         )}
 
-        {/* Mana cost — top right circle */}
+        {/* Mana cost — top right */}
         {card.mana_cost > 0 && (
-          <div
-            className="absolute top-2 right-2 z-20 w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold text-white"
-            style={{ background: 'rgba(0,0,0,0.6)', border: `1.5px solid ${borderColor}` }}
-          >
-            {card.mana_cost}
+          <div className="absolute top-1.5 right-1.5 z-20">
+            <ManaCostDisplay
+              color={(card.color as CardColor) || 'white'}
+              coloredCost={card.colored_cost}
+              genericCost={card.generic_cost}
+              totalCost={card.mana_cost}
+              size={18}
+            />
           </div>
         )}
 

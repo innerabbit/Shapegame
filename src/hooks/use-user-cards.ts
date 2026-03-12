@@ -17,6 +17,8 @@ export interface OwnedCardDetails {
   atk: number;
   hp: number;
   mana_cost: number;
+  generic_cost: number | null;
+  colored_cost: number | null;
   perk_1_name: string | null;
   perk_1_desc: string | null;
   ability: string | null;
@@ -71,7 +73,7 @@ export function useUserCards() {
       const supabase = createClient();
       const { data: cardDetails, error } = await supabase
         .from('cards')
-        .select('card_number, card_type, name, shape, material, rarity_tier, mana_color, color, hero_class, atk, hp, mana_cost, perk_1_name, perk_1_desc, ability, raw_art_path, processed_card_path, thumb_path')
+        .select('card_number, card_type, name, shape, material, rarity_tier, mana_color, color, hero_class, atk, hp, mana_cost, generic_cost, colored_cost, perk_1_name, perk_1_desc, ability, raw_art_path, processed_card_path, thumb_path')
         .in('card_number', cardNumbers);
 
       if (error) {

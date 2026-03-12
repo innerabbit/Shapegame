@@ -2,8 +2,8 @@
 
 import { forwardRef, useMemo } from 'react';
 import { SplineCard, type SplineCardContent, type SplineCardHandle } from './spline-card';
-import type { RarityTier, ManaColor, ShapeType, MaterialType, CardType, BackgroundType } from '@/types/cards';
-import { RARITY_LABELS } from '@/lib/constants';
+import type { RarityTier, ManaColor, ShapeType, MaterialType, CardType, BackgroundType, CardColor } from '@/types/cards';
+import { RARITY_LABELS, CARD_COLORS, MANA_COLORS } from '@/lib/constants';
 
 /** Same-origin proxy URL for card art (avoids WebGL CORS issues with Supabase Storage) */
 function fullArtUrl(path: string | null | undefined, cacheBust?: number): string | undefined {
@@ -58,6 +58,11 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
         ? (card.shape || 'land').toUpperCase()
         : 'ARTIFACT';
 
+    // Resolve mana orb color from card color
+    const colorHex = card.color && CARD_COLORS[card.color as CardColor]
+      ? CARD_COLORS[card.color as CardColor].hex
+      : '#3b82f6'; // default blue
+
     return {
       title: card.name.toUpperCase(),
       description: card.perk_1_name
@@ -69,10 +74,15 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
       manaCost: String(card.mana_cost ?? 0),
       material: typeLabel,
       artUrl: fullArtUrl(card.raw_art_path, card.artVersion),
+      manaColorHex: colorHex,
     };
   }
 
   // Legacy card: use shape/material/ability/def
+  const legacyHex = card.mana_color && MANA_COLORS[card.mana_color]
+    ? MANA_COLORS[card.mana_color].hex
+    : '#3b82f6';
+
   return {
     title: card.shape.toUpperCase(),
     description: card.ability || '',
@@ -82,6 +92,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
     manaCost: String(card.mana_cost),
     material: card.material.toUpperCase(),
     artUrl: fullArtUrl(card.raw_art_path, card.artVersion) || `/art-${card.shape}.png`,
+    manaColorHex: legacyHex,
   };
 }
 

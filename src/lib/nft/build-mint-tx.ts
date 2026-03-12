@@ -3,7 +3,11 @@ import {
   transactionBuilder,
   type Umi,
 } from '@metaplex-foundation/umi';
-import { mintV2, findLeafAssetIdPda, parseLeafFromMintV2Transaction } from '@metaplex-foundation/mpl-bubblegum';
+import {
+  mintToCollectionV1,
+  findLeafAssetIdPda,
+  parseLeafFromMintToCollectionV1Transaction,
+} from '@metaplex-foundation/mpl-bubblegum';
 import { COLLECTION_ADDRESS, MERKLE_TREE_ADDRESS, METADATA_BASE_URL } from './config';
 import type { BoosterCard } from './pick-booster';
 import bs58 from 'bs58';
@@ -16,9 +20,11 @@ export interface MintResult {
 }
 
 /**
- * Mint compressed NFTs (cNFTs) via Bubblegum V2.
+ * Mint compressed NFTs (cNFTs) via Bubblegum V1 with Token Metadata collection.
  * Server fully signs and sends — no client signing needed.
- * Mints each card in a separate transaction to avoid ALT resolution issues.
+ *
+ * Strategy: try all 3 cards in ONE transaction first (fastest, fits in 10s Vercel timeout).
+ * If that fails (tx too large), fall back to individual transactions.
  */
 export async function mintCompressedCards(
   umi: Umi,
@@ -32,26 +38,42 @@ export async function mintCompressedCards(
     throw new Error('MERKLE_TREE_ADDRESS env var is required');
   }
 
-  const collectionPk = publicKey(COLLECTION_ADDRESS);
+  const collectionMint = publicKey(COLLECTION_ADDRESS);
   const merkleTreePk = publicKey(MERKLE_TREE_ADDRESS);
   const leafOwner = publicKey(walletAddress);
 
-  const assetIds: string[] = [];
-  const signatures: string[] = [];
+  // Try batch mint (all cards in one transaction)
+  try {
+    return await mintBatch(umi, cards, collectionMint, merkleTreePk, leafOwner);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('[mint] Batch mint failed, falling back to individual:', msg);
+    return await mintIndividual(umi, cards, collectionMint, merkleTreePk, leafOwner);
+  }
+}
 
-  // Mint each card in a separate transaction to avoid
-  // "address table lookups were not resolved" error
+/** Mint all cards in a single transaction */
+async function mintBatch(
+  umi: Umi,
+  cards: BoosterCard[],
+  collectionMint: ReturnType<typeof publicKey>,
+  merkleTreePk: ReturnType<typeof publicKey>,
+  leafOwner: ReturnType<typeof publicKey>,
+): Promise<MintResult> {
+  let builder = transactionBuilder();
+
   for (const card of cards) {
-    // Use legacy transaction version to avoid ALT resolution issues
-    const builder = transactionBuilder().add(
-      mintV2(umi, {
+    builder = builder.add(
+      mintToCollectionV1(umi, {
         merkleTree: merkleTreePk,
         leafOwner,
-        coreCollection: collectionPk,
+        collectionMint,
         metadata: {
           name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
+          symbol: 'SHAPE',
           uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
-          sellerFeeBasisPoints: 500, // 5% royalties
+          sellerFeeBasisPoints: 500,
+          collection: { key: collectionMint, verified: false },
           creators: [
             {
               address: umi.identity.publicKey,
@@ -59,7 +81,66 @@ export async function mintCompressedCards(
               share: 100,
             },
           ],
-          collection: collectionPk,
+        },
+      }),
+    );
+  }
+
+  const result = await builder.sendAndConfirm(umi);
+  const signature = bs58.encode(result.signature);
+
+  // Parse all leaves from the batch transaction
+  const assetIds: string[] = [];
+  try {
+    const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, result.signature);
+    const startNonce = Number(leaf.nonce) - (cards.length - 1);
+    for (let i = 0; i < cards.length; i++) {
+      const [assetId] = findLeafAssetIdPda(umi, {
+        merkleTree: merkleTreePk,
+        leafIndex: startNonce + i,
+      });
+      assetIds.push(assetId.toString());
+    }
+  } catch {
+    // Fallback: use signature references
+    for (let i = 0; i < cards.length; i++) {
+      assetIds.push(`${signature}:${i}`);
+    }
+  }
+
+  return { assetIds, signatures: [signature] };
+}
+
+/** Mint each card in a separate transaction (fallback) */
+async function mintIndividual(
+  umi: Umi,
+  cards: BoosterCard[],
+  collectionMint: ReturnType<typeof publicKey>,
+  merkleTreePk: ReturnType<typeof publicKey>,
+  leafOwner: ReturnType<typeof publicKey>,
+): Promise<MintResult> {
+  const assetIds: string[] = [];
+  const signatures: string[] = [];
+
+  for (const card of cards) {
+    const builder = transactionBuilder().add(
+      mintToCollectionV1(umi, {
+        merkleTree: merkleTreePk,
+        leafOwner,
+        collectionMint,
+        metadata: {
+          name: `Shape Card #${String(card.card_number).padStart(3, '0')}`,
+          symbol: 'SHAPE',
+          uri: `${METADATA_BASE_URL}/api/nft/metadata/${card.card_number}`,
+          sellerFeeBasisPoints: 500,
+          collection: { key: collectionMint, verified: false },
+          creators: [
+            {
+              address: umi.identity.publicKey,
+              verified: true,
+              share: 100,
+            },
+          ],
         },
       }),
     );
@@ -68,22 +149,17 @@ export async function mintCompressedCards(
     const signature = bs58.encode(result.signature);
     signatures.push(signature);
 
-    // Derive asset ID from the Merkle tree leaf index
     try {
-      const leaf = await parseLeafFromMintV2Transaction(umi, result.signature);
+      const leaf = await parseLeafFromMintToCollectionV1Transaction(umi, result.signature);
       const [assetId] = findLeafAssetIdPda(umi, {
         merkleTree: merkleTreePk,
         leafIndex: Number(leaf.nonce),
       });
       assetIds.push(assetId.toString());
-    } catch (err) {
-      console.warn('[mint] Could not parse leaf from tx, using signature as reference:', err);
+    } catch {
       assetIds.push(`${signature}:0`);
     }
   }
 
-  return {
-    assetIds,
-    signatures,
-  };
+  return { assetIds, signatures };
 }

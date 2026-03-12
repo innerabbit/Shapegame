@@ -16,6 +16,7 @@ export interface SplineCardContent {
   manaCost: string;      // e.g. "2"
   material: string;      // class/type label, e.g. "PREACHER" or "3D"
   artUrl?: string;       // optional URL for card art texture
+  manaColorHex?: string; // hex color for "Mana type" 3D orb, e.g. "#ef4444"
 }
 
 export interface SplineCardHandle {
@@ -229,6 +230,77 @@ function applyContent(spline: SplineApp, content: SplineCardContent, attempt = 0
     };
     img.onerror = () => console.warn('[Spline] ⚠️ Art image load failed:', content.artUrl);
     img.src = content.artUrl;
+  }
+
+  // Update "Mana type" 3D orb color — traverse raw scene like we do for text
+  if (content.manaColorHex) {
+    try {
+      const hex = content.manaColorHex.replace('#', '');
+      const r = parseInt(hex.substring(0, 2), 16) / 255;
+      const g = parseInt(hex.substring(2, 4), 16) / 255;
+      const b = parseInt(hex.substring(4, 6), 16) / 255;
+
+      // Find raw "Mana type" object in internal scene (not proxy)
+      let manaRaw: any = null;
+      const findMana = (obj: any) => {
+        const name = (obj.data?.name || obj.name || '').trim();
+        if (name === 'Mana type') { manaRaw = obj; return; }
+        for (const child of obj.children || []) {
+          if (manaRaw) return;
+          findMana(child);
+        }
+      };
+
+      // Try Spline traverseEntity first, then THREE.js children walk
+      if (typeof scene.traverseEntity === 'function') {
+        scene.traverseEntity((obj: any) => {
+          if (manaRaw) return;
+          const name = (obj.data?.name || obj.name || '').trim();
+          if (name === 'Mana type') manaRaw = obj;
+        });
+      }
+      if (!manaRaw) findMana(scene);
+
+      if (manaRaw) {
+        // THREE.js material color — most Spline meshes use this
+        if (manaRaw.material?.color?.setRGB) {
+          manaRaw.material.color.setRGB(r, g, b);
+          if (manaRaw.material.needsUpdate !== undefined) manaRaw.material.needsUpdate = true;
+        }
+
+        // Spline layer system — iterate all material layers and set color
+        if (manaRaw.material?.layers) {
+          for (const layer of manaRaw.material.layers) {
+            if (layer.color?.setRGB) {
+              layer.color.setRGB(r, g, b);
+            } else if (layer.color !== undefined) {
+              layer.color = content.manaColorHex;
+            }
+            // Also try emissive/tint if present
+            if (layer.emissive?.setRGB) layer.emissive.setRGB(r, g, b);
+          }
+        }
+
+        // Also handle child meshes (grouped Spline objects)
+        for (const child of manaRaw.children || []) {
+          if (child.material?.color?.setRGB) {
+            child.material.color.setRGB(r, g, b);
+            if (child.material.needsUpdate !== undefined) child.material.needsUpdate = true;
+          }
+        }
+
+        const render = () => {
+          if (sharedAssets?.requestRender) sharedAssets.requestRender();
+          else if (app.requestRender) app.requestRender();
+        };
+        render();
+        setTimeout(render, 200);
+      } else {
+        console.warn('[Spline] "Mana type" object not found in scene');
+      }
+    } catch (e) {
+      console.warn('[Spline] ⚠️ Mana type color change failed:', e);
+    }
   }
 }
 

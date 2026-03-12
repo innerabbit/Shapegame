@@ -8,7 +8,7 @@ import { NextResponse } from 'next/server';
 export async function GET() {
   const metadata = {
     name: 'The Shape Game',
-    symbol: 'SHAPE',
+    symbol: 'SHPG',
     description:
       'NFT card game on Solana. Collect heroes, artifacts, and lands — each card is a unique compressed NFT. Hold SOL, open free boosters, build your deck, and battle.',
     image: 'https://theshapegame.app/collection-image.png',
@@ -17,7 +17,7 @@ export async function GET() {
       category: 'game',
       creators: [
         {
-          address: 'SHPGmeRVNwdi4Wns4rfa4rEHWefKBhfMzRj2VhLqiER',
+          address: 'EskHzPns8Epq9ruQ36F5ogCdWvQWTxFDw4cbiwfuDPFS',
           share: 100,
         },
       ],

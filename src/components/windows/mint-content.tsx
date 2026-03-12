@@ -209,15 +209,15 @@ export function MintContent() {
     partial: 'Partially minted',
   };
 
-  // ── Derive current step ──
+  // ── Derive current step (5 steps) ──
   const currentStep: number =
     !connected || !isAuthenticated ? 1
     : loading ? 1
     : !status?.hasEnoughBalance ? 2
-    : holdingCountdown > 0 || !status?.holdingComplete ? 2
-    : stage === 'done' && !packOpened ? 4
-    : stage === 'done' && packOpened ? 3 // after opening, show mint again
-    : 3;
+    : holdingCountdown > 0 || !status?.holdingComplete ? 3
+    : stage === 'done' && !packOpened ? 5
+    : stage === 'done' && packOpened ? 4
+    : 4;
 
   const walletAddr = publicKey?.toBase58();
   const shortAddr = walletAddr ? `${walletAddr.slice(0, 4)}...${walletAddr.slice(-4)}` : '';
@@ -287,58 +287,57 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* ── Step 2: Hold SOL ── */}
+        {/* ── Step 2: Hold SOL (balance check) ── */}
         {renderStep(
           2,
           'Hold SOL',
           currentStep > 2 ? 'done' : currentStep === 2 ? 'active' : 'pending',
-          'Holding verified',
+          `${status?.currentBalance?.toFixed(2) ?? '0'} SOL`,
           <div className="space-y-3">
-            {!status?.hasEnoughBalance ? (
-              <>
-                <p className="text-[11px] text-[#cc0000]">
-                  You need at least {status?.requiredBalance ?? 0.01} SOL in your wallet.
-                </p>
-                <div className="flex items-center justify-between text-[11px]">
-                  <span className="text-[#666]">Current balance:</span>
-                  <span className="font-bold text-[#cc0000]">
-                    {status?.currentBalance?.toFixed(4) ?? '0'} SOL
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className="text-[11px] text-[#444]">
-                  Keep at least {status?.requiredBalance ?? 0.01} SOL for {holdingMinutes} min to unlock free minting
-                </p>
-                {holdingCountdown > 0 && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] text-[#003c74] font-bold">Time remaining</span>
-                      <span className="font-bold text-[#003c74] font-mono text-[18px]">
-                        {formatTime(holdingCountdown)}
-                      </span>
-                    </div>
-                    <div className="xp-progress h-[12px]">
-                      <div
-                        className="h-full bg-[#003c74] transition-all duration-1000"
-                        style={{
-                          width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </>
-                )}
-              </>
-            )}
+            <p className="text-[11px] text-[#cc0000]">
+              You need at least {status?.requiredBalance ?? 0.01} SOL in your wallet.
+            </p>
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-[#666]">Current balance:</span>
+              <span className="font-bold text-[#cc0000]">
+                {status?.currentBalance?.toFixed(4) ?? '0'} SOL
+              </span>
+            </div>
           </div>,
         )}
 
-        {/* ── Step 3: Mint ── */}
+        {/* ── Step 3: Verification timer ── */}
         {renderStep(
           3,
+          'Verification',
+          currentStep > 3 ? 'done' : currentStep === 3 ? 'active' : 'pending',
+          'Verified',
+          <div className="space-y-3">
+            <p className="text-[11px] text-[#444]">
+              Verifying your balance for {holdingMinutes} min...
+            </p>
+            <button
+              disabled
+              className="xp-button w-full py-[10px] text-[16px] font-bold font-mono text-[#003c74]"
+            >
+              ⏳ {formatTime(holdingCountdown)}
+            </button>
+            <div className="xp-progress h-[12px]">
+              <div
+                className="h-full bg-[#003c74] transition-all duration-1000"
+                style={{
+                  width: `${Math.max(0, 100 - (holdingCountdown / (holdingMinutes * 60)) * 100)}%`,
+                }}
+              />
+            </div>
+          </div>,
+        )}
+
+        {/* ── Step 4: Mint ── */}
+        {renderStep(
+          4,
           'Mint Your Pack',
-          stage === 'done' ? 'done' : currentStep === 3 ? 'active' : 'pending',
+          stage === 'done' ? 'done' : currentStep === 4 ? 'active' : 'pending',
           '6 cards minted!',
           <div className="space-y-3">
             {/* Progress indicator during mint */}
@@ -418,9 +417,9 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* ── Step 4: Open Pack ── */}
+        {/* ── Step 5: Open Pack ── */}
         {renderStep(
-          4,
+          5,
           'Open Pack',
           packOpened ? 'done' : stage === 'done' ? 'active' : 'pending',
           'Pack opened!',

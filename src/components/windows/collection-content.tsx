@@ -59,11 +59,47 @@ export function CollectionContent() {
     </div>
   );
 
+  const collectionAddress = process.env.NEXT_PUBLIC_COLLECTION_ADDRESS;
+
+  const collectionLinks = collectionAddress ? (
+    <div className="flex items-center gap-3 mb-3 text-[10px]">
+      <span className="text-[#666]">View collection:</span>
+      <a
+        href={`https://magiceden.io/marketplace/${collectionAddress}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 text-[#003399] hover:underline"
+      >
+        <img src="/me-icon.png" alt="" className="w-4 h-4" />
+        Magic Eden
+      </a>
+      <a
+        href={`https://opensea.io/collection/${collectionAddress}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 text-[#003399] hover:underline"
+      >
+        <img src="/os-icon.png" alt="" className="w-4 h-4" />
+        OpenSea
+      </a>
+      <a
+        href={`https://solscan.io/account/${collectionAddress}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="flex items-center gap-1 text-[#003399] hover:underline"
+      >
+        <img src="/solscan-icon.png" alt="" className="w-4 h-4" />
+        Solscan
+      </a>
+    </div>
+  ) : null;
+
   // Not connected — prompt to connect
   if (!connected) {
     return (
       <div>
         {tabBar}
+        {collectionLinks}
         <div className="flex flex-col items-center py-10 text-center">
           <span className="text-5xl mb-4">🃏</span>
           <h2 className="text-[14px] font-bold text-[#003399] mb-2">Your Card Collection</h2>
@@ -81,6 +117,7 @@ export function CollectionContent() {
   return (
     <div>
       {tabBar}
+      {collectionLinks}
 
       {tab === 'my-cards' ? (
         <>

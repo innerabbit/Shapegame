@@ -87,20 +87,24 @@ export function MintContent() {
       return;
     }
     intervalRef.current = setInterval(() => {
-      let shouldRefresh = false;
       if (countdown > 0) {
         setCountdown((prev) => {
-          if (prev <= 1) { shouldRefresh = true; return 0; }
+          if (prev <= 1) {
+            setTimeout(fetchStatus, 500);
+            return 0;
+          }
           return prev - 1;
         });
       }
       if (holdingCountdown > 0) {
         setHoldingCountdown((prev) => {
-          if (prev <= 1) { shouldRefresh = true; return 0; }
+          if (prev <= 1) {
+            setTimeout(fetchStatus, 500);
+            return 0;
+          }
           return prev - 1;
         });
       }
-      if (shouldRefresh) fetchStatus();
     }, 1000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);

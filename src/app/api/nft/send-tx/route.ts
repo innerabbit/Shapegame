@@ -1,13 +1,22 @@
 import { NextResponse } from 'next/server';
 import { Connection } from '@solana/web3.js';
+import { createServerSupabase } from '@/lib/supabase/server';
 
 /**
  * POST /api/nft/send-tx
  * Accepts a signed transaction (base64) and sends it via the server's RPC.
  * This avoids exposing the paid RPC URL to the client.
+ * Requires authentication to prevent abuse as an open RPC proxy.
  */
 export async function POST(req: Request) {
   try {
+    // Auth check — only authenticated users can use our RPC proxy
+    const supabase = await createServerSupabase();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
     const { signedTx } = await req.json();
 
     if (!signedTx || typeof signedTx !== 'string') {

@@ -128,51 +128,7 @@ function buildPromptFromTemplates(
   return `${base}\n\n${interpolate(typeTemplate, vars)}`;
 }
 
-// ── Hardcoded fallback (used if prompts table doesn't exist yet) ──
-
-function buildDescriptionPromptFallback(card: any, maps: ContextMaps): string {
-  const base = `You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, muted colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.
-
-Generate a vivid, cinematic visual description (2-3 sentences) for this card's artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit '96 aesthetic is mandatory.
-
-`;
-
-  if (card.card_type === 'hero') {
-    return base + `HERO CARD:
-- Name: ${card.name}
-- Class: ${card.hero_class} (${classContext(card.hero_class, maps)})
-- Color: ${card.color}
-- Rarity: ${card.rarity_tier}
-- ATK: ${card.atk}, HP: ${card.hp}
-- Perk 1: ${card.perk_1_name || 'none'} — ${card.perk_1_desc || ''}
-${card.perk_2_name ? `- Perk 2: ${card.perk_2_name} — ${card.perk_2_desc}` : ''}
-
-Describe this character in a Detroit '96 scene. Include their appearance, clothing, pose, and environment. The character's power level should be reflected in the scene scale — ${rarityScale(card.rarity_tier, maps)}.`;
-  }
-
-  if (card.card_type === 'land') {
-    return base + `LAND CARD (Mana Source):
-- Name: ${card.name}
-- Color: ${card.color} (${colorContext(card.color, maps)})
-- Shape: ${card.shape}
-- Material: ${card.material}
-- Rarity: ${card.rarity_tier}
-
-Describe a Detroit '96 location that embodies the ${card.color} mana color. The ${card.shape} shape in ${card.material} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: ${materialContext(card.material, maps)}.`;
-  }
-
-  if (card.card_type === 'artifact') {
-    return base + `ARTIFACT CARD (Weapon/Equipment):
-- Name: ${card.name}
-- Type: ${card.artifact_subtype}
-- Rarity: ${card.rarity_tier}
-- Effect: ${card.ability}
-
-Describe this item in a Detroit '96 context. Show the ${card.name} as if photographed on a table, in someone's hands, or in use on the street. The item's power should match its rarity: ${rarityScale(card.rarity_tier, maps)}.`;
-  }
-
-  return base + `Card: ${card.name} (${card.card_type}). Describe a scene for this card.`;
-}
+// No more hardcoded fallback — all prompts must come from DB
 
 // ── Load context maps from DB or auto-seed defaults ──
 
@@ -265,9 +221,17 @@ export async function POST(request: NextRequest) {
   // ── Preview mode: return assembled prompts without calling Gemini ──
   if (previewOnly) {
     const previews = cards.map(card => {
-      const prompt = templates
-        ? buildPromptFromTemplates(card, templates, maps)
-        : buildDescriptionPromptFallback(card, maps);
+      if (!templates) {
+        return {
+          cardId: card.id,
+          name: card.name,
+          fullPrompt: '',
+          error: 'No prompt templates found in DB. Save templates in Admin → Prompt Templates first.',
+          templateSource: 'none',
+        };
+      }
+
+      const prompt = buildPromptFromTemplates(card, templates, maps);
 
       const injectedContext: Record<string, string> = {};
       if (card.hero_class) injectedContext.class_context = classContext(card.hero_class, maps);
@@ -280,7 +244,7 @@ export async function POST(request: NextRequest) {
         name: card.name,
         fullPrompt: prompt,
         injectedContext,
-        templateSource: templates ? 'supabase' : 'hardcoded_fallback',
+        templateSource: 'supabase',
       };
     });
     return NextResponse.json({ previews });
@@ -295,9 +259,12 @@ export async function POST(request: NextRequest) {
     }
 
     try {
-      const prompt = templates
-        ? buildPromptFromTemplates(card, templates, maps)
-        : buildDescriptionPromptFallback(card, maps);
+      if (!templates) {
+        results.push({ cardId: card.id, name: card.name, error: 'No prompt templates in DB. Save templates in Admin first.' });
+        continue;
+      }
+
+      const prompt = buildPromptFromTemplates(card, templates, maps);
 
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-lite',

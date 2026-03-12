@@ -244,8 +244,11 @@ export default function CardsV2Page() {
         for (const [slug, p] of Object.entries(data.prompts) as [string, any][]) {
           drafts[slug] = p.content;
         }
-        // Initialize ctx_ defaults for entries not yet in DB
+        // Initialize defaults for entries not yet in DB
         for (const [slug, def] of Object.entries(CTX_DEFAULTS)) {
+          if (!drafts[slug]) drafts[slug] = def.content;
+        }
+        for (const [slug, def] of Object.entries(TEMPLATE_DEFAULTS)) {
           if (!drafts[slug]) drafts[slug] = def.content;
         }
         setPromptDrafts(drafts);
@@ -263,6 +266,15 @@ export default function CardsV2Page() {
     ctx_rarity: { label: 'Context: Rarity Scale', content: 'legendary: EPIC, larger-than-life composition\nepic: dramatic, powerful presence\nrare: everyday street scene\nuncommon: everyday street scene\ncommon: everyday street scene' },
   };
 
+  // Template defaults — shown when not yet saved to DB
+  const TEMPLATE_DEFAULTS: Record<string, { label: string; content: string }> = {
+    base: { label: 'Base Style Prompt', content: 'You are an art director for a collectible card game set in Detroit, 1996. Everything is shot on VHS / disposable camera aesthetic — grainy, muted colors, harsh flash, lo-fi. The vibe is 90s hip-hop culture, street life, community.\n\nGenerate a vivid, cinematic visual description (2-3 sentences) for this card\'s artwork. The description should be specific enough for an AI image generator to create the art. Focus on composition, lighting, setting, and mood. Detroit \'96 aesthetic is mandatory.' },
+    hero: { label: 'Hero Card Template', content: 'HERO CARD:\n- Name: {{name}}\n- Class: {{hero_class}} ({{class_context}})\n- Color: {{color}}\n- Rarity: {{rarity_tier}}\n- ATK: {{atk}}, HP: {{hp}}\n- Perk 1: {{perk_1_name}} — {{perk_1_desc}}\n{{perk_2_line}}\n\nDescribe this character in a Detroit \'96 scene. Include their appearance, clothing, pose, and environment. The character\'s power level should be reflected in the scene scale — {{rarity_scale}}.' },
+    land: { label: 'Land Card Template', content: 'LAND CARD (Mana Source):\n- Name: {{name}}\n- Color: {{color}} ({{color_context}})\n- Shape: {{shape}}\n- Material: {{material}}\n- Rarity: {{rarity_tier}}\n\nDescribe a Detroit \'96 location that embodies the {{color}} mana color. The {{shape}} shape in {{material}} material should be subtly integrated into the scene — maybe as graffiti, an object, architecture detail, or held by someone. Material quality reflects rarity: {{material_context}}.' },
+    artifact: { label: 'Artifact Card Template', content: 'ARTIFACT CARD (Weapon/Equipment):\n- Name: {{name}}\n- Type: {{artifact_subtype}}\n- Rarity: {{rarity_tier}}\n- Effect: {{ability}}\n\nDescribe this item in a Detroit \'96 context. Show the {{name}} as if photographed on a table, in someone\'s hands, or in use on the street. The item\'s power should match its rarity: {{rarity_scale}}.' },
+    image_style: { label: 'Image Style Prompt', content: '' },
+  };
+
   // Save a single prompt
   const savePrompt = async (slug: string) => {
     setSavingPrompt(slug);
@@ -270,7 +282,7 @@ export default function CardsV2Page() {
       const res = await fetch('/api/prompts', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slug, content: promptDrafts[slug], ...(CTX_DEFAULTS[slug] ? { label: CTX_DEFAULTS[slug].label } : {}) }),
+        body: JSON.stringify({ slug, content: promptDrafts[slug], ...(CTX_DEFAULTS[slug] ? { label: CTX_DEFAULTS[slug].label } : TEMPLATE_DEFAULTS[slug] ? { label: TEMPLATE_DEFAULTS[slug].label } : {}) }),
       });
       const data = await res.json();
       if (data.prompt) {
@@ -537,17 +549,24 @@ export default function CardsV2Page() {
 
             {/* Prompt Templates */}
             {(['image_style', 'base', 'hero', 'land', 'artifact'] as const).map(slug => {
-              const p = prompts[slug];
-              if (!p) return null;
-              const draft = promptDrafts[slug] ?? p.content;
-              const changed = draft !== p.content;
+              const p = prompts?.[slug];
+              const defaults = TEMPLATE_DEFAULTS[slug];
+              const label = p?.label ?? defaults?.label ?? slug;
+              const savedContent = p?.content ?? '';
+              const draft = promptDrafts[slug] ?? (savedContent || defaults?.content || '');
+              const isNew = !p;
+              const changed = isNew ? draft !== (defaults?.content || '') : draft !== p.content;
               return (
                 <div key={slug} className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-neutral-400 uppercase">{p.label}</label>
-                    <span className="text-[10px] text-neutral-600">
-                      updated {new Date(p.updated_at).toLocaleDateString()}
-                    </span>
+                    <label className="text-xs font-semibold text-neutral-400 uppercase">{label}</label>
+                    {p ? (
+                      <span className="text-[10px] text-neutral-600">
+                        updated {new Date(p.updated_at).toLocaleDateString()}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-amber-600">not saved yet — defaults shown</span>
+                    )}
                   </div>
                   <textarea
                     value={draft}
@@ -571,10 +590,10 @@ export default function CardsV2Page() {
                   )}
                   <button
                     onClick={() => savePrompt(slug)}
-                    disabled={!changed || savingPrompt === slug}
+                    disabled={(!changed && !isNew) || savingPrompt === slug}
                     className="bg-green-700 hover:bg-green-600 disabled:bg-neutral-700 disabled:text-neutral-500 text-white px-4 py-1 rounded text-xs font-medium"
                   >
-                    {savingPrompt === slug ? 'Saving...' : changed ? 'Save Changes' : 'No Changes'}
+                    {savingPrompt === slug ? 'Saving...' : isNew ? 'Save to DB' : changed ? 'Save Changes' : 'No Changes'}
                   </button>
                 </div>
               );

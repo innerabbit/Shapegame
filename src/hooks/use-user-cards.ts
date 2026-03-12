@@ -4,16 +4,21 @@ import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from './use-auth';
 
-interface OwnedCardDetails {
+export interface OwnedCardDetails {
   card_number: number;
+  card_type: string | null;
+  name: string | null;
   shape: string;
   material: string;
   rarity_tier: string;
   mana_color: string;
+  color: string | null;
+  hero_class: string | null;
   atk: number;
-  def: number;
   hp: number;
   mana_cost: number;
+  perk_1_name: string | null;
+  perk_1_desc: string | null;
   ability: string | null;
   raw_art_path: string | null;
   processed_card_path: string | null;
@@ -47,7 +52,7 @@ export function useUserCards() {
 
     const { data, error } = await supabase
       .from('user_cards')
-      .select('*, cards(card_number, shape, material, rarity_tier, mana_color, atk, def, hp, mana_cost, ability, raw_art_path, processed_card_path, thumb_path)')
+      .select('*, cards(card_number, card_type, name, shape, material, rarity_tier, mana_color, color, hero_class, atk, hp, mana_cost, perk_1_name, perk_1_desc, ability, raw_art_path, processed_card_path, thumb_path)')
       .eq('user_id', user.id)
       .order('opened_at', { ascending: false });
 

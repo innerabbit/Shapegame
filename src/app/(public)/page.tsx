@@ -7,11 +7,13 @@ import { OnboardingContent } from '@/components/windows/onboarding-content';
 import { ShopContent } from '@/components/windows/shop-content';
 import { CollectionContent } from '@/components/windows/collection-content';
 import { LeaderboardContent } from '@/components/windows/leaderboard-content';
+import { GeneratorContent } from '@/components/windows/generator-content';
 
 const HASH_TO_WINDOW: Record<string, WindowId> = {
   shop: 'shop',
   collection: 'collection',
   leaderboard: 'leaderboard',
+  generator: 'generator',
 };
 
 export default function HomePage() {
@@ -66,6 +68,10 @@ export default function HomePage() {
         statusBar={<><div>10 collectors listed</div><div>Preview data</div><div className="flex-1 text-right">Leaderboard</div></>}
       >
         <LeaderboardContent />
+      </XpManagedWindow>
+
+      <XpManagedWindow windowId="generator">
+        <GeneratorContent />
       </XpManagedWindow>
 
       {/* Empty desktop message when no windows open */}

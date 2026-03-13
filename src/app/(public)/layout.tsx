@@ -13,6 +13,7 @@ const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
   { id: 'shop', icon: '/icons/xp-cards.svg', label: 'Free Mint' },
   { id: 'collection', icon: '/icons/xp-collection.svg', label: 'Collection' },
   { id: 'leaderboard', icon: '/icons/xp-trophy.svg', label: 'Leaderboard' },
+  { id: 'generator', icon: '/icons/xp-cards.svg', label: 'Card Generator' },
 ];
 
 function TaskbarInner() {

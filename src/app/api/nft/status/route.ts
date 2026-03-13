@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { TOKEN_MINT_ADDRESS, MIN_TOKEN_BALANCE, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
 
 /**
  * GET /api/nft/status
  * Returns mint eligibility status for the authenticated user.
- * Shows balance, cooldown timer, and whether they can mint.
+ * Shows token balance, cooldown timer, and whether they can mint.
  */
 export async function GET() {
   // 1. Auth check
@@ -32,22 +33,27 @@ export async function GET() {
     return NextResponse.json({
       canMint: false,
       reason: 'not_authenticated',
-      requiredBalance: MIN_BALANCE_LAMPORTS / LAMPORTS_PER_SOL,
+      requiredBalance: MIN_TOKEN_BALANCE,
       cooldownMinutes: MINT_COOLDOWN_MINUTES,
     });
   }
 
-  // 2. Balance check
+  // 2. SPL token balance check
   const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
   const connection = new Connection(rpcUrl, 'confirmed');
-  let currentBalance = 0;
+  const walletPubkey = new PublicKey(walletAddress);
+  const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
+
+  let tokenBalance = 0;
   try {
-    currentBalance = await connection.getBalance(new PublicKey(walletAddress));
+    const ata = getAssociatedTokenAddressSync(tokenMint, walletPubkey);
+    const accountInfo = await connection.getTokenAccountBalance(ata);
+    tokenBalance = Number(accountInfo.value.uiAmount || 0);
   } catch {
-    // RPC error — treat as 0 balance
+    // Account doesn't exist or RPC error — treat as 0
   }
 
-  const hasEnoughBalance = currentBalance >= MIN_BALANCE_LAMPORTS;
+  const hasEnoughBalance = tokenBalance >= MIN_TOKEN_BALANCE;
 
   // 3. Holding period + cooldown check
   const admin = createAdminClient();
@@ -57,7 +63,7 @@ export async function GET() {
   if (hasEnoughBalance) {
     const { data: seenAt } = await admin.rpc('record_wallet_seen', {
       p_wallet: walletAddress,
-      p_balance: currentBalance,
+      p_balance: tokenBalance,
     });
     firstSeenAt = seenAt;
   } else {
@@ -119,8 +125,8 @@ export async function GET() {
     canMint,
     nextMintAt,
     secondsRemaining,
-    requiredBalance: MIN_BALANCE_LAMPORTS / LAMPORTS_PER_SOL,
-    currentBalance: currentBalance / LAMPORTS_PER_SOL,
+    requiredBalance: MIN_TOKEN_BALANCE,
+    currentBalance: tokenBalance,
     hasEnoughBalance,
     totalMints,
     cooldownMinutes: MINT_COOLDOWN_MINUTES,

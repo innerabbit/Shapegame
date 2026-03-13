@@ -7,6 +7,7 @@ import { AuthProvider } from '@/components/providers/auth-provider';
 import { WalletButton } from '@/components/wallet-button';
 import { Toaster } from 'sonner';
 import { useWindowManager, type WindowId } from '@/lib/stores/window-manager';
+import { SplineWallpaper } from '@/components/spline-wallpaper';
 
 const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
   { id: 'onboarding', icon: '/icons/xp-home.svg', label: 'Welcome' },
@@ -108,8 +109,11 @@ export default function PublicLayout({
     <WalletProvider>
       <AuthProvider>
       <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
+        {/* 3D Spline wallpaper */}
+        <SplineWallpaper />
+
         {/* Main content — desktop area */}
-        <main className="flex-1 relative">
+        <main className="flex-1 relative" style={{ zIndex: 1 }}>
           {children}
         </main>
 

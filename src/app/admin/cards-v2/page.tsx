@@ -47,7 +47,7 @@ export default function CardsV2Page() {
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingArt, setGeneratingArt] = useState(false);
   const [uploadingArt, setUploadingArt] = useState(false);
-  const [artVersion, setArtVersion] = useState(0); // cache-bust for art images
+  const [artVersion, setArtVersion] = useState(() => Date.now()); // cache-bust for art images
 
   const [error, setError] = useState<string | null>(null);
 
@@ -890,6 +890,7 @@ export default function CardsV2Page() {
               {selectedCard.raw_art_path && (
                 <div className="flex-1 bg-neutral-800 rounded-lg overflow-hidden">
                   <img
+                    key={`art-${selectedCard.id}-${artVersion}`}
                     src={artUrl(selectedCard.raw_art_path, artVersion)!}
                     alt={selectedCard.name || ''}
                     className="w-full aspect-[4/3] object-cover"
@@ -1024,7 +1025,7 @@ export default function CardsV2Page() {
                         setCards(prev => prev.map(c =>
                           c.id === selectedCard.id ? { ...c, ...updatedCard } : c
                         ));
-                        setArtVersion(v => v + 1);
+                        setArtVersion(Date.now());
                         setSelectedCard(prev => prev
                           ? { ...prev, raw_art_path: data.filePath, art_prompt: data.card?.art_prompt }
                           : null
@@ -1072,7 +1073,7 @@ export default function CardsV2Page() {
                         setCards(prev => prev.map(c =>
                           c.id === selectedCard.id ? { ...c, ...data.card } : c
                         ));
-                        setArtVersion(v => v + 1);
+                        setArtVersion(Date.now());
                         setSelectedCard(prev => prev ? { ...prev, raw_art_path: data.filePath } : null);
                       } else {
                         toast.error(data.error || 'Upload failed');

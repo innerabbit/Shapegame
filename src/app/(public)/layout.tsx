@@ -125,6 +125,9 @@ function TaskbarInner() {
         <a href="https://x.com/theshapegame" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
           <img src="/icons/twitter.svg" alt="Twitter" width={14} height={14} />
         </a>
+        <a href="https://github.com/innerabbit/Shapegame" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
+          <img src="/icons/github.svg" alt="GitHub" width={14} height={14} />
+        </a>
         <img src="/icons/xp-speaker.svg" alt="" width={14} height={14} />
         <span className="text-[11px]">
           {new Date().toLocaleTimeString('en-US', {
@@ -160,7 +163,7 @@ export default function PublicLayout({
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            zIndex: -1,
+            zIndex: 0,
             pointerEvents: 'none',
           }}
         >

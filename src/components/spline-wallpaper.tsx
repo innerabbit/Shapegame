@@ -15,6 +15,7 @@ export function SplineWallpaper() {
         width: '100vw',
         height: '100vh',
         zIndex: 0,
+        opacity: 0.6,
       }}
     >
       <Spline scene={SCENE_URL} />

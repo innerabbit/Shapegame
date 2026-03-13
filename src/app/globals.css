@@ -134,7 +134,7 @@
 
 /* XP Desktop background — gradient fallback while Spline 3D loads */
 .xp-desktop {
-  background: linear-gradient(135deg, #b8b0d8 0%, #a8c0d8 30%, #98c8cc 60%, #b0d0c8 100%);
+  background: transparent;
   min-height: 100vh;
   font-family: 'Tahoma', 'Segoe UI', 'Arial', sans-serif;
   font-size: 11px;

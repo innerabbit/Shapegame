@@ -8,7 +8,7 @@ export const COLLECTION_ADDRESS = process.env.NEXT_PUBLIC_COLLECTION_ADDRESS || 
 export const MERKLE_TREE_ADDRESS = process.env.MERKLE_TREE_ADDRESS || '';
 
 /** SPL token mint address required for free mint */
-export const TOKEN_MINT_ADDRESS = process.env.TOKEN_MINT_ADDRESS || '4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump';
+export const TOKEN_MINT_ADDRESS = process.env.TOKEN_MINT_ADDRESS || 'DHPpqsiWjcSmCkeUmxr6SENEy7gs3HDZ2Wtq4jPUpump';
 
 /** Minimum SPL token balance required to mint (in token units, NOT decimals) */
 export const MIN_TOKEN_BALANCE = Number(process.env.MIN_TOKEN_BALANCE || 1_000_000);

@@ -23,7 +23,7 @@ const DESKTOP_ICONS: DesktopIcon[] = [
 export function XpDesktopIcons() {
   const openWindow = useWindowManager((s) => s.openWindow);
 
-  const handleDoubleClick = useCallback((id: WindowId) => {
+  const handleClick = useCallback((id: WindowId) => {
     openWindow(id);
   }, [openWindow]);
 
@@ -33,13 +33,7 @@ export function XpDesktopIcons() {
         <button
           key={item.id}
           className="xp-desktop-icon"
-          onDoubleClick={() => handleDoubleClick(item.id)}
-          // Single click just for mobile
-          onClick={(e) => {
-            if ('ontouchstart' in window) {
-              handleDoubleClick(item.id);
-            }
-          }}
+          onClick={() => handleClick(item.id)}
         >
           <img
             src={item.icon}

@@ -487,6 +487,61 @@
   text-shadow: 0 1px 0 rgba(0,0,0,0.3);
 }
 
+/* ── Pink Wallet Button ── */
+.xp-wallet-btn {
+  background: linear-gradient(180deg, #ff6b9d 0%, #e84593 50%, #d63384 100%);
+  border: 1px solid #b02a6e;
+  border-radius: 2px;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: default;
+  height: 22px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.3), 0 1px 0 rgba(0,0,0,0.2);
+}
+.xp-wallet-btn:hover {
+  background: linear-gradient(180deg, #ff85b1 0%, #f055a3 50%, #e04494 100%);
+}
+.xp-wallet-btn:active {
+  background: linear-gradient(180deg, #d63384 0%, #c22a76 50%, #b02a6e 100%);
+  box-shadow: inset 0 1px 2px rgba(0,0,0,0.3);
+}
+
+/* ── Token CA in tray ── */
+.xp-token-ca {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-family: monospace;
+  font-size: 10px;
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 0 rgba(0,0,0,0.3);
+}
+.xp-token-ca-copy {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  padding: 1px 2px;
+  font-size: 11px;
+  line-height: 1;
+}
+.xp-token-ca-copy:hover {
+  color: #fff;
+}
+
+/* ── Tray external links ── */
+.xp-tray-link {
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: opacity 0.1s;
+}
+.xp-tray-link:hover {
+  opacity: 1;
+}
+
 /* ── XP Top Bar (simplified title bar) ── */
 .xp-top-bar {
   background: linear-gradient(180deg, #0997ff 0%, #0053ee 8%, #0050ee 20%, #0855dd 60%, #0348c8 90%, #084ece 100%);
@@ -496,6 +551,78 @@
   justify-content: space-between;
   min-height: 32px;
   user-select: none;
+}
+
+/* ── XP Desktop Icons ── */
+.xp-desktop-icons {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 0;
+  pointer-events: auto;
+}
+
+.xp-desktop-icon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  width: 72px;
+  transition: background 0.1s;
+}
+
+.xp-desktop-icon:hover {
+  background: rgba(80, 130, 200, 0.25);
+  border-color: rgba(80, 130, 200, 0.5);
+}
+
+.xp-desktop-icon:focus {
+  background: rgba(80, 130, 200, 0.35);
+  border-color: rgba(80, 130, 200, 0.7);
+  outline: none;
+}
+
+.xp-desktop-icon img {
+  width: 48px;
+  height: 48px;
+  filter: drop-shadow(1px 1px 2px rgba(0, 0, 0, 0.5));
+}
+
+.xp-desktop-icon-label {
+  color: #fff;
+  font-size: 11px;
+  font-family: Tahoma, sans-serif;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.9);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+  max-width: 68px;
+}
+
+@media (max-width: 767px) {
+  .xp-desktop-icons {
+    top: 8px;
+    left: 8px;
+    gap: 2px;
+  }
+  .xp-desktop-icon {
+    width: 64px;
+  }
+  .xp-desktop-icon img {
+    width: 40px;
+    height: 40px;
+  }
+  .xp-desktop-icon-label {
+    font-size: 10px;
+  }
 }
 
 /* ── XP Managed Windows ── */
@@ -518,6 +645,21 @@
 .xp-managed-window-runner {
   width: 300px !important;
   max-height: none;
+}
+
+.xp-managed-window-player {
+  width: 440px !important;
+  max-height: none;
+}
+
+.xp-managed-window-faq {
+  width: 520px !important;
+  max-height: 80vh;
+}
+
+.xp-managed-window-mcp {
+  width: 520px !important;
+  max-height: 80vh;
 }
 
 @media (max-width: 767px) {

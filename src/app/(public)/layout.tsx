@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import Image from 'next/image';
 import { WalletProvider } from '@/components/providers/wallet-provider';
 import { AuthProvider } from '@/components/providers/auth-provider';
@@ -16,7 +16,33 @@ const ALL_WINDOWS: { id: WindowId; icon: string; label: string }[] = [
   { id: 'leaderboard', icon: '/icons/xp-trophy.svg', label: 'Leaderboard' },
   { id: 'generator', icon: '/icons/xp-cards.svg', label: 'Card Generator' },
   { id: 'runner', icon: '/icons/xp-cards.svg', label: 'Shape Runner' },
+  { id: 'player', icon: '/icons/xp-cards.svg', label: 'Media Player' },
+  { id: 'faq', icon: '/icons/xp-cards.svg', label: 'FAQ' },
+  { id: 'mcp', icon: '/icons/xp-cards.svg', label: 'MCP Agent' },
 ];
+
+const TOKEN_CA = '4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump';
+
+function TokenCA() {
+  const [copied, setCopied] = useState(false);
+  const short = `${TOKEN_CA.slice(0, 4)}...${TOKEN_CA.slice(-4)}`;
+
+  const copy = useCallback(() => {
+    navigator.clipboard.writeText(TOKEN_CA);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }, []);
+
+  return (
+    <div className="xp-token-ca">
+      <span>CA:</span>
+      <span>{short}</span>
+      <button className="xp-token-ca-copy" onClick={copy} title="Copy contract address">
+        {copied ? '✓' : '📋'}
+      </button>
+    </div>
+  );
+}
 
 function TaskbarInner() {
   const windows = useWindowManager((s) => s.windows);
@@ -87,7 +113,18 @@ function TaskbarInner() {
 
       {/* System tray */}
       <div className="xp-tray">
+        <TokenCA />
+        <a href="https://pump.fun/coin/4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
+          <img src="/icons/pumpfun.svg" alt="Pump.fun" width={16} height={16} />
+        </a>
+        <a href="https://gmgn.ai/sol/token/4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
+          <img src="/icons/gmgn.svg" alt="GMGN" width={16} height={16} />
+        </a>
+        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
         <WalletButton />
+        <a href="https://x.com/theshapegame" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
+          <img src="/icons/twitter.svg" alt="Twitter" width={14} height={14} />
+        </a>
         <img src="/icons/xp-speaker.svg" alt="" width={14} height={14} />
         <span className="text-[11px]">
           {new Date().toLocaleTimeString('en-US', {

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type WindowId = 'onboarding' | 'shop' | 'collection' | 'leaderboard' | 'generator' | 'runner';
+export type WindowId = 'onboarding' | 'shop' | 'collection' | 'leaderboard' | 'generator' | 'runner' | 'player' | 'faq' | 'mcp';
 
 export interface WindowState {
   id: WindowId;
@@ -20,6 +20,9 @@ const WINDOW_DEFS: { id: WindowId; title: string; icon: string; x: number; y: nu
   { id: 'leaderboard', title: 'Leaderboard', icon: '/icons/xp-trophy.svg', x: 220, y: 90 },
   { id: 'generator', title: 'Card Generator', icon: '/icons/xp-cards.svg', x: 100, y: 40 },
   { id: 'runner', title: 'Shape Runner', icon: '/icons/xp-cards.svg', x: 300, y: 150 },
+  { id: 'player', title: 'Media Player', icon: '/icons/xp-cards.svg', x: 200, y: 80 },
+  { id: 'faq', title: 'FAQ & Tokenomics', icon: '/icons/xp-cards.svg', x: 120, y: 50 },
+  { id: 'mcp', title: 'MCP Agent Terminal', icon: '/icons/xp-cards.svg', x: 180, y: 70 },
 ];
 
 interface WindowManagerStore {
@@ -38,7 +41,7 @@ interface WindowManagerStore {
 function getInitialWindows(): WindowState[] {
   return WINDOW_DEFS.map((def, i) => ({
     ...def,
-    isOpen: def.id !== 'runner',
+    isOpen: def.id === 'onboarding',
     isMinimized: false,
     // Onboarding gets highest z-index so it's on top
     zIndex: def.id === 'onboarding' ? 20 : 10 + i,

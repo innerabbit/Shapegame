@@ -34,9 +34,7 @@ export function WalletButton() {
     <button
       onClick={handleClick}
       disabled={connecting || isSigningIn}
-      className={`xp-button flex items-center gap-[6px] px-3 py-[2px] text-[11px] ${
-        connected ? 'xp-button-primary' : ''
-      }`}
+      className="xp-wallet-btn flex items-center gap-[6px] px-3 py-[2px] text-[11px]"
     >
       {label ? (
         <span>{label}</span>

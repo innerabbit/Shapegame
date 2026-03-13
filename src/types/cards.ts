@@ -104,6 +104,7 @@ export interface CardV2 {
   processed_card_path: string | null;
   thumb_path: string | null;
   promo_path: string | null;
+  video_path: string | null;
 
   // Timestamps
   created_at: string;

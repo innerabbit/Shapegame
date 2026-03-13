@@ -37,41 +37,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isSigningIn, setIsSigningIn] = useState(false);
   const supabaseRef = useRef(createClient());
   const authAttemptedRef = useRef<string | null>(null);
+  // Gate auto-sign-in on Supabase's INITIAL_SESSION event — guarantees
+  // the client has fully checked cookies/storage before we decide whether
+  // to prompt for a wallet signature.
+  const [sessionChecked, setSessionChecked] = useState(false);
 
-  // Fetch app user from users table
-  const fetchUser = useCallback(async () => {
-    const supabase = supabaseRef.current;
-    const { data: { session } } = await supabase.auth.getSession();
-
-    if (!session) {
-      setUser(null);
-      setIsLoading(false);
-      return;
-    }
-
-    const { data } = await supabase
+  // Fetch app user by supabase auth id
+  const fetchUserById = useCallback(async (authId: string) => {
+    const { data } = await supabaseRef.current
       .from('users')
       .select('*')
-      .eq('supabase_auth_id', session.user.id)
+      .eq('supabase_auth_id', authId)
       .single();
-
-    setUser(data);
-    setIsLoading(false);
+    return data as AppUser | null;
   }, []);
 
-  // Listen for auth state changes
+  // Public refetch — reads current session
+  const refetchUser = useCallback(async () => {
+    const { data: { session } } = await supabaseRef.current.auth.getSession();
+    if (session) {
+      const appUser = await fetchUserById(session.user.id);
+      setUser(appUser);
+    } else {
+      setUser(null);
+    }
+  }, [fetchUserById]);
+
+  // Listen for auth state changes — single source of truth
   useEffect(() => {
     const supabase = supabaseRef.current;
 
-    // Initial check
-    fetchUser();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (session) {
+          const appUser = await fetchUserById(session.user.id);
+          setUser(appUser);
+        } else {
+          setUser(null);
+        }
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      fetchUser();
-    });
+        // INITIAL_SESSION fires once after Supabase finishes checking
+        // cookies/storage. Only after this can we safely decide whether
+        // the user needs to sign a message.
+        if (event === 'INITIAL_SESSION') {
+          setSessionChecked(true);
+          setIsLoading(false);
+        }
+      },
+    );
 
     return () => subscription.unsubscribe();
-  }, [fetchUser]);
+  }, [fetchUserById]);
 
   // Auto sign-in when wallet connects
   useEffect(() => {
@@ -88,8 +104,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    // Wait for initial session check to complete before auto sign-in
-    if (isLoading) return;
+    // Wait until Supabase has finished restoring session from cookies
+    if (!sessionChecked) return;
 
     // Already signed in with this wallet, or already attempted
     if (user?.wallet_address === walletAddress) return;
@@ -109,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setIsSigningIn(false);
     });
-  }, [wallet.connected, wallet.publicKey, wallet.signMessage, user, isSigningIn, isLoading, wallet]);
+  }, [wallet.connected, wallet.publicKey, wallet.signMessage, user, isSigningIn, sessionChecked, wallet]);
 
   const signOut = useCallback(async () => {
     await supabaseRef.current.auth.signOut();
@@ -125,7 +141,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isAuthenticated: !!user,
         isSigningIn,
         signOut,
-        refetchUser: fetchUser,
+        refetchUser,
       }}
     >
       {children}

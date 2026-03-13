@@ -1,12 +1,12 @@
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 
 /**
- * Check if a wallet's SOL balance dropped below the threshold
+ * Check if a wallet's SPL token balance dropped below the threshold
  * at any point during the holding period.
  *
  * Uses standard Solana RPC:
  * 1. getSignaturesForAddress → list of tx in the window
- * 2. getTransaction per tx → check pre/post balances
+ * 2. getTransaction per tx → check preTokenBalances/postTokenBalances
  *
  * Returns { ok: true } if balance stayed above threshold,
  * or { ok: false, reason } if it dropped.
@@ -15,15 +15,17 @@ export async function checkBalanceHistory(
   connection: Connection,
   walletAddress: string,
   sinceTimestamp: Date,
-  minLamports: number,
+  tokenMint: PublicKey,
+  minTokens: number,
 ): Promise<{ ok: boolean; reason?: string }> {
   const pubkey = new PublicKey(walletAddress);
+  const mintStr = tokenMint.toBase58();
 
   // 1. Get recent transaction signatures for this wallet
   let signatures;
   try {
     signatures = await connection.getSignaturesForAddress(pubkey, {
-      limit: 50, // More than enough for 30 min window
+      limit: 50,
     });
   } catch (err) {
     // RPC error — fail open (allow mint, don't block on RPC issues)
@@ -42,7 +44,7 @@ export async function checkBalanceHistory(
     return { ok: true };
   }
 
-  // 2. Check each transaction for balance drops
+  // 2. Check each transaction for token balance drops
   for (const sig of relevantSigs) {
     let tx;
     try {
@@ -57,7 +59,6 @@ export async function checkBalanceHistory(
     if (!tx?.meta) continue;
 
     // Find wallet's index in accountKeys
-    // Use staticAccountKeys to avoid ALT resolution errors on V0 transactions
     const staticKeys = tx.transaction.message.staticAccountKeys;
     let walletIndex = -1;
     for (let i = 0; i < staticKeys.length; i++) {
@@ -69,14 +70,24 @@ export async function checkBalanceHistory(
 
     if (walletIndex === -1) continue;
 
-    // Check if balance dropped below threshold at any point
-    const preBal = tx.meta.preBalances[walletIndex];
-    const postBal = tx.meta.postBalances[walletIndex];
+    // Check preTokenBalances and postTokenBalances for this wallet + mint
+    const preTokenBal = tx.meta.preTokenBalances?.find(
+      (b) => b.owner === walletAddress && b.mint === mintStr,
+    );
+    const postTokenBal = tx.meta.postTokenBalances?.find(
+      (b) => b.owner === walletAddress && b.mint === mintStr,
+    );
 
-    if (preBal < minLamports || postBal < minLamports) {
+    // If neither pre nor post has this token, tx didn't affect it — skip
+    if (!preTokenBal && !postTokenBal) continue;
+
+    const preAmount = Number(preTokenBal?.uiTokenAmount?.uiAmount || 0);
+    const postAmount = Number(postTokenBal?.uiTokenAmount?.uiAmount || 0);
+
+    if (preAmount < minTokens || postAmount < minTokens) {
       return {
         ok: false,
-        reason: `Balance dropped below ${minLamports / LAMPORTS_PER_SOL} SOL during holding period (tx: ${sig.signature.slice(0, 8)}...)`,
+        reason: `Token balance dropped below ${minTokens.toLocaleString()} during holding period (tx: ${sig.signature.slice(0, 8)}...)`,
       };
     }
   }

@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createServerSupabase } from '@/lib/supabase/server';
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { getAssociatedTokenAddressSync } from '@solana/spl-token';
 import { getUmi } from '@/lib/nft/umi';
 import { pickBoosterPack } from '@/lib/nft/pick-booster';
 import { mintCompressedCards } from '@/lib/nft/build-mint-tx';
 import { verifyCreatorsAfterMint } from '@/lib/nft/verify-after-mint';
-import { MIN_BALANCE_LAMPORTS, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
+import { TOKEN_MINT_ADDRESS, MIN_TOKEN_BALANCE, MINT_COOLDOWN_MINUTES, HOLDING_PERIOD_MINUTES } from '@/lib/nft/config';
 import { checkBalanceHistory } from '@/lib/nft/check-balance-history';
 import { randomUUID } from 'crypto';
 
@@ -50,22 +51,32 @@ export async function POST() {
 
     console.log('[nft/mint] Wallet:', walletAddress);
 
-    // 2. Balance check
+    // 2. SPL token balance check
     const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
     const connection = new Connection(rpcUrl, 'confirmed');
-    let balance = 0;
+    const walletPubkey = new PublicKey(walletAddress);
+    const tokenMint = new PublicKey(TOKEN_MINT_ADDRESS);
+
+    let tokenBalance = 0;
     try {
-      balance = await connection.getBalance(new PublicKey(walletAddress));
-    } catch (err) {
-      console.error('[nft/mint] Balance check failed:', err);
-      return NextResponse.json({ error: 'Failed to check balance' }, { status: 503 });
+      const ata = getAssociatedTokenAddressSync(tokenMint, walletPubkey);
+      const accountInfo = await connection.getTokenAccountBalance(ata);
+      tokenBalance = Number(accountInfo.value.uiAmount || 0);
+    } catch (err: any) {
+      // Account doesn't exist = 0 balance
+      if (err?.message?.includes('could not find account')) {
+        tokenBalance = 0;
+      } else {
+        console.error('[nft/mint] Token balance check failed:', err);
+        return NextResponse.json({ error: 'Failed to check token balance' }, { status: 503 });
+      }
     }
 
-    console.log('[nft/mint] Balance:', balance, 'Required:', MIN_BALANCE_LAMPORTS);
+    console.log('[nft/mint] Token balance:', tokenBalance, 'Required:', MIN_TOKEN_BALANCE);
 
-    if (balance < MIN_BALANCE_LAMPORTS) {
+    if (tokenBalance < MIN_TOKEN_BALANCE) {
       return NextResponse.json({
-        error: `Insufficient balance. Need ${MIN_BALANCE_LAMPORTS / LAMPORTS_PER_SOL} SOL, have ${balance / LAMPORTS_PER_SOL} SOL`,
+        error: `Insufficient token balance. Need ${MIN_TOKEN_BALANCE.toLocaleString()} tokens, have ${tokenBalance.toLocaleString()}`,
       }, { status: 403 });
     }
 
@@ -97,9 +108,9 @@ export async function POST() {
       }, { status: 403 });
     }
 
-    // Verify balance didn't drop below threshold during holding period
+    // Verify token balance didn't drop below threshold during holding period
     const historyCheck = await checkBalanceHistory(
-      connection, walletAddress, firstSeen, MIN_BALANCE_LAMPORTS,
+      connection, walletAddress, firstSeen, tokenMint, MIN_TOKEN_BALANCE,
     );
 
     if (!historyCheck.ok) {

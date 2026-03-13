@@ -36,6 +36,7 @@ export function DecksContent({ ownedCards, cardsLoading }: DecksContentProps) {
       <DeckEditor
         deck={editingDeck}
         ownedCards={ownedCards}
+        otherDecks={decks.filter((d) => d.id !== editingDeck?.id)}
         onSave={async (name, cardNumbers) => {
           if (editingDeck) {
             await updateDeck(editingDeck.id, name, cardNumbers);
@@ -210,11 +211,13 @@ function DeckList({
 function DeckEditor({
   deck,
   ownedCards,
+  otherDecks,
   onSave,
   onCancel,
 }: {
   deck: Deck | null;
   ownedCards: OwnedCard[];
+  otherDecks: Deck[];
   onSave: (name: string, cardNumbers: number[]) => Promise<void>;
   onCancel: () => void;
 }) {
@@ -234,7 +237,7 @@ function DeckEditor({
     return counts;
   }, [ownedCards]);
 
-  // Count how many of each card_number are in the deck
+  // Count how many of each card_number are in the current deck
   const deckCounts = useMemo(() => {
     const counts = new Map<number, number>();
     for (const cn of selectedCards) {
@@ -242,6 +245,17 @@ function DeckEditor({
     }
     return counts;
   }, [selectedCards]);
+
+  // Count how many of each card_number are locked in OTHER decks
+  const usedInOtherDecks = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (const d of otherDecks) {
+      for (const c of d.cards) {
+        counts.set(c.card_number, (counts.get(c.card_number) || 0) + 1);
+      }
+    }
+    return counts;
+  }, [otherDecks]);
 
   // Unique cards for the picker
   const uniqueOwned = useMemo(() => {
@@ -260,7 +274,10 @@ function DeckEditor({
     if (selectedCards.length >= 20) return;
     const owned = ownedCounts.get(cardNumber) || 0;
     const inDeck = deckCounts.get(cardNumber) || 0;
-    if (inDeck >= owned) return;
+    const inOther = usedInOtherDecks.get(cardNumber) || 0;
+    // Available = owned minus those already in other decks
+    const available = owned - inOther;
+    if (inDeck >= available) return;
     setSelectedCards([...selectedCards, cardNumber]);
   };
 
@@ -376,7 +393,9 @@ function DeckEditor({
             {uniqueOwned.map((oc) => {
               const owned = ownedCounts.get(oc.card_number) || 0;
               const inDeck = deckCounts.get(oc.card_number) || 0;
-              const maxed = inDeck >= owned;
+              const inOther = usedInOtherDecks.get(oc.card_number) || 0;
+              const available = owned - inOther;
+              const maxed = inDeck >= available || available <= 0;
               return (
                 <div
                   key={oc.card_number}
@@ -386,9 +405,14 @@ function DeckEditor({
                   <CollectionCard
                     card={oc.cards}
                     size="sm"
-                    badge={owned > 1 ? `x${owned}` : undefined}
+                    badge={available > 1 ? `x${available}` : available <= 0 ? '0' : undefined}
                     dimmed={maxed}
                   />
+                  {inOther > 0 && available <= 0 && (
+                    <div className="text-[9px] text-center text-red-500 font-bold mt-0.5">
+                      in other deck
+                    </div>
+                  )}
                   {inDeck > 0 && (
                     <div className="text-[9px] text-center text-[#003399] font-bold mt-0.5">
                       {inDeck} in deck

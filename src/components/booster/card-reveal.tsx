@@ -36,6 +36,7 @@ export interface CardData {
   ability: string | null;
   card_number: number;
   raw_art_path?: string | null;
+  thumb_path?: string | null;
   artVersion?: number;
 }
 
@@ -73,7 +74,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
       stats: card.card_type === 'hero' ? `${card.atk} / ${card.hp}` : '',
       manaCost: String(card.mana_cost ?? 0),
       material: typeLabel,
-      artUrl: fullArtUrl(card.raw_art_path, card.artVersion),
+      artUrl: fullArtUrl(card.thumb_path || card.raw_art_path, card.artVersion),
       manaColorHex: colorHex,
     };
   }
@@ -91,7 +92,7 @@ export function cardToSplineContent(card: CardData): SplineCardContent {
     stats: `${card.atk} / ${card.def}`,
     manaCost: String(card.mana_cost),
     material: card.material.toUpperCase(),
-    artUrl: fullArtUrl(card.raw_art_path, card.artVersion) || `/art-${card.shape}.png`,
+    artUrl: fullArtUrl(card.thumb_path || card.raw_art_path, card.artVersion) || `/art-${card.shape}.png`,
     manaColorHex: legacyHex,
   };
 }

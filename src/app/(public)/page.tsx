@@ -9,6 +9,10 @@ import { CollectionContent } from '@/components/windows/collection-content';
 import { LeaderboardContent } from '@/components/windows/leaderboard-content';
 import { GeneratorContent } from '@/components/windows/generator-content';
 import { RunnerContent } from '@/components/windows/runner-content';
+import { PlayerContent } from '@/components/windows/player-content';
+import { FaqContent } from '@/components/windows/faq-content';
+import { McpContent } from '@/components/windows/mcp-content';
+import { XpDesktopIcons } from '@/components/xp/xp-desktop-icons';
 
 const HASH_TO_WINDOW: Record<string, WindowId> = {
   shop: 'shop',
@@ -16,20 +20,22 @@ const HASH_TO_WINDOW: Record<string, WindowId> = {
   leaderboard: 'leaderboard',
   generator: 'generator',
   runner: 'runner',
+  player: 'player',
+  faq: 'faq',
+  mcp: 'mcp',
 };
 
 export default function HomePage() {
   const focusedWindow = useWindowManager((s) => s.focusedWindow);
   const windows = useWindowManager((s) => s.windows);
-  const hasAnyOpen = windows.some((w) => w.isOpen);
 
-  // On mount: focus window from hash (all windows start open)
+  // On mount: open window from hash
   useEffect(() => {
-    const { focusWindow } = useWindowManager.getState();
+    const { openWindow } = useWindowManager.getState();
     const hash = window.location.hash.replace('#', '');
     const windowId = HASH_TO_WINDOW[hash];
     if (windowId) {
-      focusWindow(windowId);
+      openWindow(windowId);
     }
   }, []);
 
@@ -50,6 +56,8 @@ export default function HomePage() {
 
   return (
     <div className="xp-window-area">
+      <XpDesktopIcons />
+
       <XpManagedWindow windowId="onboarding">
         <OnboardingContent />
       </XpManagedWindow>
@@ -80,15 +88,19 @@ export default function HomePage() {
         <RunnerContent />
       </XpManagedWindow>
 
-      {/* Empty desktop message when no windows open */}
-      {!hasAnyOpen && (
-        <div className="flex items-center justify-center h-full">
-          <div className="text-white/60 text-center">
-            <div className="text-4xl mb-2">🎴</div>
-            <div className="text-[12px]">Click Start or a taskbar button to open a window</div>
-          </div>
-        </div>
-      )}
+      <XpManagedWindow windowId="player" noPadding className="xp-managed-window-player">
+        <PlayerContent />
+      </XpManagedWindow>
+
+      <XpManagedWindow windowId="faq" className="xp-managed-window-faq">
+        <FaqContent />
+      </XpManagedWindow>
+
+      <XpManagedWindow windowId="mcp" noPadding className="xp-managed-window-mcp">
+        <McpContent />
+      </XpManagedWindow>
+
+      {/* Desktop icons are always visible behind windows */}
     </div>
   );
 }

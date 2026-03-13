@@ -47,6 +47,7 @@ export default function CardsV2Page() {
   const [generatingDesc, setGeneratingDesc] = useState(false);
   const [generatingArt, setGeneratingArt] = useState(false);
   const [uploadingArt, setUploadingArt] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
   const [artVersion, setArtVersion] = useState(() => Date.now()); // cache-bust for art images
 
   const [error, setError] = useState<string | null>(null);
@@ -1086,6 +1087,55 @@ export default function CardsV2Page() {
                 />
                 {uploadingArt ? 'Uploading...' : '📷 Upload Photo'}
               </label>
+            </div>
+
+            {/* Upload Video */}
+            <div className="flex gap-2">
+              <label
+                className={`flex-1 text-center py-2 rounded text-sm font-medium cursor-pointer transition-colors ${
+                  uploadingVideo
+                    ? 'bg-neutral-700 text-neutral-400 cursor-wait'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                }`}
+              >
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  className="hidden"
+                  disabled={uploadingVideo}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !selectedCard) return;
+                    e.target.value = '';
+                    setUploadingVideo(true);
+                    try {
+                      const fd = new FormData();
+                      fd.append('file', file);
+                      fd.append('cardId', selectedCard.id);
+                      fd.append('cardNumber', String(selectedCard.card_number));
+                      fd.append('cardName', selectedCard.name || 'card');
+                      const res = await fetch('/api/upload/video', { method: 'POST', body: fd });
+                      const data = await res.json();
+                      if (data.success) {
+                        toast.success('Video uploaded!');
+                        setCards(prev => prev.map(c =>
+                          c.id === selectedCard.id ? { ...c, ...data.card } : c
+                        ));
+                        setSelectedCard(prev => prev ? { ...prev, video_path: data.filePath } : null);
+                      } else {
+                        toast.error(data.error || 'Video upload failed');
+                      }
+                    } catch {
+                      toast.error('Network error uploading video');
+                    }
+                    setUploadingVideo(false);
+                  }}
+                />
+                {uploadingVideo ? 'Uploading...' : selectedCard.video_path ? '🎬 Replace Video' : '🎬 Upload Video'}
+              </label>
+              {selectedCard.video_path && (
+                <span className="text-xs text-green-400 self-center">✓ has video</span>
+              )}
             </div>
           </div>
         )}

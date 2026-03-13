@@ -9,6 +9,7 @@ interface XpManagedWindowProps {
   toolbar?: ReactNode;
   statusBar?: ReactNode;
   noPadding?: boolean;
+  className?: string;
 }
 
 export function XpManagedWindow({
@@ -17,6 +18,7 @@ export function XpManagedWindow({
   toolbar,
   statusBar,
   noPadding,
+  className,
 }: XpManagedWindowProps) {
   const win = useWindowManager((s) => s.windows.find((w) => w.id === windowId)!);
   const focused = useWindowManager((s) => s.focusedWindow === windowId);
@@ -62,7 +64,7 @@ export function XpManagedWindow({
 
   return (
     <div
-      className={`xp-managed-window ${focused ? 'xp-managed-window-focused' : 'xp-managed-window-blur'}`}
+      className={`xp-managed-window ${focused ? 'xp-managed-window-focused' : 'xp-managed-window-blur'} ${className || ''}`}
       style={positionStyle}
       onMouseDown={() => {
         if (!focused) focusWindow(windowId);

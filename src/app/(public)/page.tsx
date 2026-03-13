@@ -8,12 +8,14 @@ import { ShopContent } from '@/components/windows/shop-content';
 import { CollectionContent } from '@/components/windows/collection-content';
 import { LeaderboardContent } from '@/components/windows/leaderboard-content';
 import { GeneratorContent } from '@/components/windows/generator-content';
+import { RunnerContent } from '@/components/windows/runner-content';
 
 const HASH_TO_WINDOW: Record<string, WindowId> = {
   shop: 'shop',
   collection: 'collection',
   leaderboard: 'leaderboard',
   generator: 'generator',
+  runner: 'runner',
 };
 
 export default function HomePage() {
@@ -72,6 +74,10 @@ export default function HomePage() {
 
       <XpManagedWindow windowId="generator">
         <GeneratorContent />
+      </XpManagedWindow>
+
+      <XpManagedWindow windowId="runner" noPadding className="xp-managed-window-runner">
+        <RunnerContent />
       </XpManagedWindow>
 
       {/* Empty desktop message when no windows open */}

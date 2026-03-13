@@ -515,6 +515,11 @@
   max-height: min(80vh, 700px);
 }
 
+.xp-managed-window-runner {
+  width: 300px !important;
+  max-height: none;
+}
+
 @media (max-width: 767px) {
   .xp-managed-window {
     /* Mobile: full screen, override inline left/top */

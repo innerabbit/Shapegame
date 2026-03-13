@@ -113,14 +113,14 @@ function TaskbarInner() {
 
       {/* System tray */}
       <div className="xp-tray">
-        <TokenCA />
+        {/* <TokenCA />
         <a href="https://pump.fun/coin/4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
           <img src="/icons/pumpfun.svg" alt="Pump.fun" width={16} height={16} />
         </a>
         <a href="https://gmgn.ai/sol/token/4DYBF9S986mpAppRmtGmMr1nTtGYkBftjStAo8Fvpump" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
           <img src="/icons/gmgn.svg" alt="GMGN" width={16} height={16} />
         </a>
-        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} />
+        <div style={{ width: 1, height: 16, background: 'rgba(255,255,255,0.2)' }} /> */}
         <WalletButton />
         <a href="https://x.com/theshapegame" target="_blank" rel="noopener noreferrer" className="xp-tray-link">
           <img src="/icons/twitter.svg" alt="Twitter" width={14} height={14} />

@@ -413,6 +413,7 @@
   left: 0;
   right: 0;
   z-index: 100;
+  pointer-events: auto;
 }
 
 .xp-start-button {
@@ -502,12 +503,14 @@
   position: absolute;
   inset: 0;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .xp-managed-window {
   position: absolute;
   display: flex;
   flex-direction: column;
+  pointer-events: auto;
   width: min(85vw, 900px);
   max-height: min(80vh, 700px);
 }

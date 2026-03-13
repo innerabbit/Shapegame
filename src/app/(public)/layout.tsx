@@ -113,7 +113,7 @@ export default function PublicLayout({
         <SplineWallpaper />
 
         {/* Main content — desktop area */}
-        <main className="flex-1 relative" style={{ zIndex: 1 }}>
+        <main className="flex-1 relative" style={{ zIndex: 1, pointerEvents: 'none' }}>
           {children}
         </main>
 

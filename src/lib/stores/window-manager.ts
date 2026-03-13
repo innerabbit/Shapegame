@@ -37,7 +37,7 @@ interface WindowManagerStore {
 function getInitialWindows(): WindowState[] {
   return WINDOW_DEFS.map((def, i) => ({
     ...def,
-    isOpen: def.id !== 'generator',
+    isOpen: true,
     isMinimized: false,
     // Onboarding gets highest z-index so it's on top
     zIndex: def.id === 'onboarding' ? 20 : 10 + i,

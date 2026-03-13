@@ -147,7 +147,27 @@ export default function PublicLayout({
     <WalletProvider>
       <AuthProvider>
       <div className="xp-desktop flex flex-col" style={{ paddingBottom: 36 }}>
-        {/* 3D Spline wallpaper */}
+        {/* Background video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            zIndex: -1,
+            pointerEvents: 'none',
+          }}
+        >
+          <source src="/shape_game.mp4" type="video/mp4" />
+        </video>
+
+        {/* 3D Spline wallpaper — on top of video */}
         <SplineWallpaper />
 
         {/* Main content — desktop area */}

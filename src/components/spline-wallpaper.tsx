@@ -1,36 +1,23 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { Application } from '@splinetool/runtime';
+import dynamic from 'next/dynamic';
 
-const SCENE_URL = 'https://prod.spline.design/f0yF1oYeO50SDQs1/scene.splinecode?v=2';
+const Spline = dynamic(() => import('@splinetool/react-spline'), { ssr: false });
+
+const SCENE_URL = 'https://prod.spline.design/f0yF1oYeO50SDQs1/scene.splinecode?v=3';
 
 export function SplineWallpaper() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const app = new Application(canvas);
-    app.load(SCENE_URL);
-
-    return () => {
-      app.dispose();
-    };
-  }, []);
-
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       style={{
         position: 'fixed',
         inset: 0,
         width: '100vw',
         height: '100vh',
         zIndex: 0,
-        pointerEvents: 'auto',
       }}
-    />
+    >
+      <Spline scene={SCENE_URL} />
+    </div>
   );
 }

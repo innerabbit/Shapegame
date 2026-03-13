@@ -230,7 +230,7 @@ export function MintContent() {
           1,
           'Connect Wallet',
           currentStep > 1 ? 'done' : 'active',
-          connected ? `${shortAddr} · ${status?.currentBalance?.toFixed(2) ?? '...'} SOL` : '',
+          connected ? `${shortAddr} · ${Number(status?.currentBalance ?? 0).toLocaleString()} $SHAPEGAME` : '',
           <div className="text-center py-2">
             <p className="text-[11px] text-[#444] mb-3">
               Connect your Solana wallet to start
@@ -244,20 +244,20 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* ── Step 2: Hold SOL (balance check) ── */}
+        {/* ── Step 2: Hold $SHAPEGAME (token balance check) ── */}
         {renderStep(
           2,
-          'Hold SOL',
+          'Hold $SHAPEGAME',
           currentStep > 2 ? 'done' : currentStep === 2 ? 'active' : 'pending',
-          `${status?.currentBalance?.toFixed(2) ?? '0'} SOL`,
+          `${Number(status?.currentBalance ?? 0).toLocaleString()} $SHAPEGAME`,
           <div className="space-y-3">
             <p className="text-[11px] text-[#cc0000]">
-              You need at least {status?.requiredBalance ?? 0.01} SOL in your wallet.
+              You need at least {Number(status?.requiredBalance ?? 1_000_000).toLocaleString()} $SHAPEGAME tokens.
             </p>
             <div className="flex items-center justify-between text-[11px]">
               <span className="text-[#666]">Current balance:</span>
               <span className="font-bold text-[#cc0000]">
-                {status?.currentBalance?.toFixed(4) ?? '0'} SOL
+                {Number(status?.currentBalance ?? 0).toLocaleString()} $SHAPEGAME
               </span>
             </div>
           </div>,

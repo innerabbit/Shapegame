@@ -66,16 +66,19 @@ async function handleGenerate(userPrompt: string, admin: ReturnType<typeof creat
     return NextResponse.json({ error: 'prompt is required' }, { status: 400 });
   }
 
-  // Load generator_base prompt template
+  // Load generator_base + generator_art prompt templates
   let basePrompt = '';
+  let artTemplate = '';
   try {
-    const { data: row } = await admin
+    const { data: rows } = await admin
       .from('prompts')
-      .select('content')
-      .eq('slug', 'generator_base')
-      .single();
-    if (row?.content) basePrompt = row.content;
-  } catch { /* continue without template */ }
+      .select('slug, content')
+      .in('slug', ['generator_base', 'generator_art']);
+    for (const row of rows ?? []) {
+      if (row.slug === 'generator_base' && row.content) basePrompt = row.content;
+      if (row.slug === 'generator_art' && row.content) artTemplate = row.content;
+    }
+  } catch { /* continue without templates */ }
 
   // Build full text prompt with {{prompt}} interpolation
   const textPrompt = basePrompt
@@ -125,7 +128,9 @@ async function handleGenerate(userPrompt: string, admin: ReturnType<typeof creat
   // ── 2. Generate art via Gemini image model ──
   let artUrl: string | null = null;
   try {
-    const artPrompt = `Trading card game character portrait. ${userPrompt.trim()}. The character's name is "${cardData.name}". Style: digital art, vibrant colors, fantasy game card illustration, centered character portrait on transparent/simple background. No text or UI elements.`;
+    const artPrompt = artTemplate
+      ? artTemplate.replace(/\{\{prompt\}\}/g, userPrompt.trim()).replace(/\{\{name\}\}/g, cardData.name)
+      : `Trading card game character portrait. ${userPrompt.trim()}. The character's name is "${cardData.name}". Style: digital art, vibrant colors, fantasy game card illustration, centered character portrait on transparent/simple background. No text or UI elements.`;
 
     let response: any;
     let lastError: any;

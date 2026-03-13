@@ -275,6 +275,7 @@ export default function CardsV2Page() {
     artifact: { label: 'Artifact Card Template', content: 'ARTIFACT CARD (Weapon/Equipment):\n- Name: {{name}}\n- Type: {{artifact_subtype}}\n- Rarity: {{rarity_tier}}\n- Effect: {{ability}}\n\nDescribe this item in a Detroit \'96 context. Show the {{name}} as if photographed on a table, in someone\'s hands, or in use on the street. The item\'s power should match its rarity: {{rarity_scale}}.' },
     image_style: { label: 'Image Style Prompt', content: '' },
     generator_base: { label: '🎨 Generator Base (Custom Cards)', content: 'You generate trading card characters for a collectible card game. The user will describe who they want.\n\nBased on the user prompt below, create a character card. Give it a funny gangsta street name, a meme-worthy ability, and random stats.\n\nUser prompt: {{prompt}}\n\nReturn ONLY valid JSON with these fields:\n- name: a funny gangsta/street nickname (max 50 chars)\n- ability: a humorous meme ability description (max 200 chars)\n- attack: 1-10\n- defense: 1-10\n- speed: 1-10\n- mana_cost: 1-5\n- rarity: common/rare/epic/legendary\n- material: flat/holographic/gold' },
+    generator_art: { label: '🖼️ Generator Art Style (Custom Cards)', content: 'Trading card game character portrait. {{prompt}}. The character\'s name is "{{name}}". Style: digital art, vibrant colors, fantasy game card illustration, centered character portrait on transparent/simple background. No text or UI elements.' },
   };
 
   // Save a single prompt
@@ -553,7 +554,7 @@ export default function CardsV2Page() {
             </div>
 
             {/* Prompt Templates */}
-            {(['image_style', 'base', 'hero', 'land', 'artifact', 'generator_base'] as const).map(slug => {
+            {(['image_style', 'base', 'hero', 'land', 'artifact', 'generator_base', 'generator_art'] as const).map(slug => {
               const p = prompts?.[slug];
               const defaults = TEMPLATE_DEFAULTS[slug];
               const label = p?.label ?? defaults?.label ?? slug;
@@ -590,7 +591,12 @@ export default function CardsV2Page() {
                       Used for custom card generation. Variable: {'{{prompt}}'} — user&apos;s input text. Must return JSON with: name, ability, attack, defense, speed, mana_cost, rarity, material.
                     </p>
                   )}
-                  {!['base', 'image_style', 'generator_base'].includes(slug) && (
+                  {slug === 'generator_art' && (
+                    <p className="text-[10px] text-neutral-600">
+                      Art image prompt for custom cards. Variables: {'{{prompt}}'} — user&apos;s input, {'{{name}}'} — generated character name.
+                    </p>
+                  )}
+                  {!['base', 'image_style', 'generator_base', 'generator_art'].includes(slug) && (
                     <p className="text-[10px] text-neutral-600">
                       Variables: {'{{name}} {{color}} {{rarity_tier}} {{rarity_scale}}'}{' '}
                       {slug === 'hero' && '{{hero_class}} {{class_context}} {{atk}} {{hp}} {{perk_1_name}} {{perk_1_desc}} {{perk_2_line}}'}

@@ -5,6 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
 import { useAuth } from '@/hooks/use-auth';
 import { BoosterOverlay } from '@/components/booster/booster-overlay';
+import { useWindowManager } from '@/lib/stores/window-manager';
 
 interface MintStatus {
   canMint: boolean;
@@ -29,6 +30,7 @@ export function MintContent() {
   const { connected, publicKey } = useWallet();
   const { setVisible } = useWalletModal();
   const { isAuthenticated } = useAuth();
+  const openWindow = useWindowManager((s) => s.openWindow);
 
   const [status, setStatus] = useState<MintStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -376,9 +378,17 @@ export function MintContent() {
             )}
 
             {status && (
-              <p className="text-[10px] text-[#888] text-center">
-                Total packs minted: {status.totalMints} · Free · Solana
-              </p>
+              <div className="text-center space-y-1">
+                <p className="text-[10px] text-[#888]">
+                  Total packs minted: {status.totalMints} · Free · Solana
+                </p>
+                <button
+                  onClick={() => openWindow('collection')}
+                  className="text-[11px] text-[#003399] underline hover:text-[#0066cc] cursor-pointer bg-transparent border-none p-0"
+                >
+                  View My Collection →
+                </button>
+              </div>
             )}
           </div>,
         )}
@@ -414,14 +424,22 @@ export function MintContent() {
           </div>,
         )}
 
-        {/* Mint again after pack opened */}
+        {/* Mint again + collection link after pack opened */}
         {packOpened && (
-          <button
-            onClick={mintAgain}
-            className="xp-button w-full py-[4px] text-[11px]"
-          >
-            Mint Another Pack
-          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={mintAgain}
+              className="xp-button flex-1 py-[4px] text-[11px]"
+            >
+              Mint Another Pack
+            </button>
+            <button
+              onClick={() => openWindow('collection')}
+              className="xp-button flex-1 py-[4px] text-[11px]"
+            >
+              📂 My Collection
+            </button>
+          </div>
         )}
       </div>
 
